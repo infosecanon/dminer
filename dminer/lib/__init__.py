@@ -1,0 +1,1 @@
+from deathbycaptcha import deathbycaptcha
