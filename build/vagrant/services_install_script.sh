@@ -14,6 +14,9 @@ apt-get update
 # Install NGINX, wget, java, htop, torproject keyring, tor
 apt-get install nginx wget default-jre htop deb.torproject.org-keyring tor -y
 
+# Upgrade Firefox to latest for selenium control
+apt-get install --only-upgrade firefox
+
 # Download and install Elasticsearh deb
 echo "Downloading Elasticsearch"
 wget -nv https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-5.3.0.deb

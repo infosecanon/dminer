@@ -16,11 +16,13 @@ Vagrant.configure("2") do |config|
   end
   
   config.vm.define :dev do |dev|
+    dev.vm.network "forwarded_port", guest: 5601, host: 8080, host_ip: "127.0.0.1"
     dev.vm.box = "boxcutter/ubuntu1604-desktop"
     dev.vm.provision :shell, path: "build/vagrant/services_install_script.sh"
     dev.vm.provision :shell, path: "build/vagrant/module_requirements_install_script.sh"
     dev.vm.provision :shell, path: "build/vagrant/module_environment_install_script.sh", privileged: false
     dev.vm.provision :shell, path: "build/vagrant/dev_module_install_script.sh", privileged: false
+    dev.vm.provision :shell, path: "build/utility/download_regressive_data.sh", privileged: false
   end
   
 end
