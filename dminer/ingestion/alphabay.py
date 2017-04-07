@@ -105,12 +105,13 @@ class AlphabayParser(object):
         if directory:
             file_pattern = os.environ.get(
                 "DMINER_ALPHABAY_PARSER_FILENAME_FORMAT",
-                ".*(?P<market_name>alphabay)_(?P<market_category>.*)_(?P<month>\d\d)_(?P<day>\d\d)_(?P<year>\d\d).html"
+                ".*(?P<market_name>alphabay)_(?P<market_category>[a-zA-Z]*)_(?P<month>([0-9]{1,2}))_(?P<day>([0-9]{1,2}))_(?P<year>([0-9]{1,4}))_(?P<page>[0-9]{1,2}).html"
             )
             files = helpers.get_files(directory)
-            for filename in list(f for f in files if re.match(pattern, f)):
-                match = re.match(pattern, filename)
-                timestamp = build_filename_timestamp(match)
+            for filename in list(f for f in files if re.match(file_pattern, f)):
+                match = re.match(file_pattern, filename)
+                timestamp = helpers.build_filename_timestamp(match)
+                print filename
                 with open(filename, 'rb') as f:
                     soup = BeautifulSoup(f, 'html.parser')
                     for listing in self.extract_listings(soup, timestamp):

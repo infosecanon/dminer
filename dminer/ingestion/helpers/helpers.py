@@ -44,7 +44,7 @@ def build_filename_timestamp(regex_matcher, base_year=2000):
             safe_named_group_value(regex_matcher, "milisecond", default="000")
         ]
     )
-
+    print timestamp
     return timestamp
 
 def safe_named_group_value(regex_matcher, name, default=None):
