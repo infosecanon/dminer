@@ -111,7 +111,6 @@ class AlphabayParser(object):
             for filename in list(f for f in files if re.match(file_pattern, f)):
                 match = re.match(file_pattern, filename)
                 timestamp = helpers.build_filename_timestamp(match)
-                print filename
                 with open(filename, 'rb') as f:
                     soup = BeautifulSoup(f, 'html.parser')
                     for listing in self.extract_listings(soup, timestamp):
