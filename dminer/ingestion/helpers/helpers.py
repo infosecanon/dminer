@@ -23,7 +23,6 @@ def build_filename_timestamp(regex_matcher, base_year=2000):
         hour -> 00
         minute -> 00
         second -> 00
-        milisecond -> 000
     """
 
     # We don't normalize these values, as these are minimum necessary for indexing.
@@ -40,8 +39,7 @@ def build_filename_timestamp(regex_matcher, base_year=2000):
         [
             safe_named_group_value(regex_matcher, "hour", default="00"),
             safe_named_group_value(regex_matcher, "minute", default="00"),
-            safe_named_group_value(regex_matcher, "second", default="00"),
-            safe_named_group_value(regex_matcher, "milisecond", default="000")
+            safe_named_group_value(regex_matcher, "second", default="00")
         ]
     )
     return timestamp

@@ -19,18 +19,18 @@ apt-get install --only-upgrade firefox
 
 # Download and install Elasticsearh deb
 echo "Downloading Elasticsearch"
-wget -nv https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-5.3.0.deb
+wget -nv https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-5.2.1.deb
 echo "Installing and starting Elasticsearch service"
-dpkg -i elasticsearch-5.3.0.deb
-rm elasticsearch-5.3.0.deb
+dpkg -i elasticsearch-5.2.1.deb
+rm elasticsearch-5.2.1.deb
 systemctl enable elasticsearch.service
 systemctl start elasticsearch
 
 # Download and install Kibana deb
 echo "Downloading Kibana"
-wget -nv https://artifacts.elastic.co/downloads/kibana/kibana-5.3.0-amd64.deb
+wget -nv https://artifacts.elastic.co/downloads/kibana/kibana-5.2.1-amd64.deb
 echo "Installing and starting Kibana service"
-dpkg -i kibana-5.3.0-amd64.deb
-rm kibana-5.3.0-amd64.deb
+dpkg -i kibana-5.2.1-amd64.deb
+rm kibana-5.2.1-amd64.deb
 systemctl enable kibana.service
 systemctl start kibana

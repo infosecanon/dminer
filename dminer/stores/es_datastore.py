@@ -8,16 +8,15 @@ class ESDataStore(object):
         self.es = Elasticsearch([":".join([str(host), str(port)])])
 
     def create(self, *args, **kwargs):
-        date_field = kwargs.get("index_date_field", None)
+        date = kwargs.get("date", None)
         parser = kwargs.get('parser', 'default')
         doctype = kwargs.get('type', 'default')
         document = kwargs.get('document', {})
 
-        if date_field:
-            index_date = document[date_field]
+        if date:
             # Index document into an index based on index_date field
             options = {
-                "index": "dminer-%s-%s" % (parser, index_date),
+                "index": "dminer-%s-%s" % (parser, date),
                 "doc_type": doctype,
                 "body": document
             }

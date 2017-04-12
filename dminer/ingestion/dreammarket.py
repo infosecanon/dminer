@@ -1,5 +1,5 @@
 from bs4 import BeautifulSoup
-import re, os, logging, helpers
+import re, os, logging, datetime, helpers
 
 class DreammarketParser(object):
     """
@@ -111,7 +111,7 @@ class DreammarketParser(object):
         if scrape_results:
             for html_obj in scrape_results:
                 soup = BeautifulSoup(hmtl_obj, 'html.parser')
-                timestamp = datetime.datetime.now().strftime("yyyy:MM:dd HH:mm:ss:SSS")
+                timestamp = datetime.datetime.now().strftime("%Y:%m:%d %H:%M:%S")
                 for listing in self.extract_listings(soup, timestamp):
                     self._store(listing)
 

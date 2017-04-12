@@ -45,7 +45,7 @@ class AlphabayConfiguration(object):
             listing_item_number -> integer
             listing_views -> integer
             listing_date -> date (yyyy-MM-dd)
-            timestamp -> date (yyyy:MM:dd HH:mm:ss:SSS)
+            timestamp -> date (yyyy:MM:dd HH:mm:ss)
 
         This configuration also controls the number of replica shards for each
         index matching the template index matching expression (dminer-alphabay-*).
@@ -60,16 +60,11 @@ class AlphabayConfiguration(object):
             "mappings": {
                 "alphabay_listing":{
                     "properties": {
-                        "listing_price": {
-                            "type": "nested",
-                            "properties": {
-                                "BTC": {
-                                    "type": "double"
-                                },
-                                "USD": {
-                                    "type": "double"
-                                }
-                            }
+                        "listing_price_btc": {
+                            "type": "double"
+                        },
+                        "listing_price_usd": {
+                            "type": "double"
                         },
                         "listing_item_number": {
                             "type": "integer"
@@ -77,13 +72,9 @@ class AlphabayConfiguration(object):
                         "listing_views": {
                             "type": "integer"
                         },
-                        "listing_date": {
-                            "type": "date",
-                            "format": "yyyy-MM-dd"
-                        },
                         "timestamp": {
                             "type": "date",
-                            "format": "yyyy:MM:dd HH:mm:ss:SSS"
+                            "format": "yyyy:MM:dd HH:mm:ss"
                         }
                     }
                 }

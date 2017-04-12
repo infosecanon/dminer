@@ -1,5 +1,5 @@
 from bs4 import BeautifulSoup
-import json, re, os, logging, helpers
+import json, re, os, logging, datetime, helpers
 
 class AlphabayParser(object):
     """
@@ -22,7 +22,7 @@ class AlphabayParser(object):
             document=item,
             type="alphabay_listing",
             parser="alphabay",
-            index_date_field="listing_date"
+            date=datetime.datetime.strptime(item["timestamp"], "%Y:%m:%d %H:%M:%S").date().strftime("%Y-%m-%d")
         )
 
     def extract_listings(self, bs_obj, timestamp):
@@ -48,10 +48,10 @@ class AlphabayParser(object):
             btc_price = price_string.split("\n")[1].split(" ")
             btc_price = btc_price[0].lstrip("(")
 
-            item["listing_price"] = {
-                "USD": usd_price,
-                "BTC": btc_price
-            }
+
+            item["listing_price_usd"] = str(float(usd_price))
+            item["listing_price_btc"] = str(float(btc_price))
+
             # Split the element value by "-" so that we can grab item number and category.
             # Text being parsed looks like: "Item # 30361 - Botnets & Malware / Botnets & Malware"
             item_number, item_category = tuple(value.strip() for value in primary_div.find("span", class_="std", style="line-height:12px;").text.split("-"))
@@ -71,17 +71,16 @@ class AlphabayParser(object):
                 vendor_name = primary_div.find("span", class_="normal").find("a", class_="std").text
                 vendor_id = vendor_id.text
                 vendor_id = vendor_id.strip().split("(")[1].rstrip(")")
-            item["listing_vendor"] = {
-                "name": vendor_name,
-                "id": int(vendor_id)
-            }
+            item["vendor_name"] = vendor_name
+            item["vendor_id"] = int(vendor_id)
+            
 
             # Grab views, bids, and quantities
             meta_info = list(parent for parent in primary_div.find_all("span", class_="std") if "Bid" in parent.text)[0].text
             view_bid_info, quantity_info = tuple(meta_info.split("Quantity left: "))
             item["listing_views"] = int(view_bid_info.split("/")[0].split(" ")[1])
             item["listing_bids"] = view_bid_info.split("/")[1].strip().split(": ")[1]
-            item["item_quantity"] = quantity_info
+            item["listing_item_quantity"] = quantity_info
 
             # Grab the listing date from the listing image
             image_date = image_div.find("a", class_="notext").find("img", class_="listing")['src']
@@ -119,7 +118,7 @@ class AlphabayParser(object):
         if scrape_results:
             for html_obj in scrape_results:
                 soup = BeautifulSoup(html_obj, 'html.parser')
-                timestamp = datetime.datetime.now().strftime("yyyy:MM:dd HH:mm:ss:SSS")
+                timestamp = datetime.datetime.now().strftime("%Y:%m:%d %H:%M:%S")
                 for listing in self.extract_listings(soup, timestamp):
                     self._store(listing)
 

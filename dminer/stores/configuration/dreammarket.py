@@ -53,34 +53,24 @@ class DreammarketConfiguration(object):
             "mappings": {
                 "dreammarket_listing":{
                     "properties": {
-                        "listing_price": {
-                            "type": "nested",
-                            "properties": {
-                                "BTC": {
-                                    "type": "double"
-                                },
-                                "escrow": {
-                                    "type": "string"
-                                }
-                            }
+                        "btc": {
+                            "type": "double"
                         },
-                        "listing_vendor": {
-                            "type": "nested",
-                            "properties": {
-                                "name": {
-                                    "type": "string"
-                                },
-                                "transactions": {
-                                    "type": "integer"
-                                },
-                                "rating": {
-                                    "type": "double"
-                                }
-                            }
+                        "listing_escrow": {
+                            "type": "string"
+                        },
+                        "vendor_name": {
+                            "type": "string"
+                        },
+                        "vendor_transactions": {
+                            "type": "integer"
+                        },
+                        "vendor_rating": {
+                            "type": "double"
                         },
                         "timestamp": {
                             "type": "date",
-                            "format": "yyyy:MM:dd HH:mm:ss:SSS"
+                            "format": "yyyy:MM:dd HH:mm:ss"
                         }
                     }
                 }
