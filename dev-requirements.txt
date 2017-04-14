@@ -3,3 +3,4 @@ elasticsearch
 selenium
 image
 pdoc
+requests

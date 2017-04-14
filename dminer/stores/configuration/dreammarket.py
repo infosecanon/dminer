@@ -50,10 +50,14 @@ class DreammarketConfiguration(object):
 
         settings = {
             "template": "dminer-dreammarket-*",
+            "settings": {
+                "number_of_shards" :   1,
+                "number_of_replicas" : 0
+            },
             "mappings": {
                 "dreammarket_listing":{
                     "properties": {
-                        "btc": {
+                        "listing_price_btc": {
                             "type": "double"
                         },
                         "listing_escrow": {
@@ -95,7 +99,7 @@ class DreammarketConfiguration(object):
         """
 
         es = Elasticsearch([":".join([str(self.datastore_host), str(self.datastore_port)])])
-        self.logger.info("Deleting index: dminer-dreammarket")
-        es.indices.delete("dminer-dreammarket")
+        self.logger.info("Deleting index: dminer-dreammarket-*")
+        es.indices.delete("dminer-dreammarket-*")
         self.logger.info("Deleting index template: dminer-dreammarket-template")
         es.indices.delete_template("dminer-dreammarket-template")

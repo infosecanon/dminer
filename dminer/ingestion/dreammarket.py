@@ -24,7 +24,8 @@ class DreammarketParser(object):
         self.datastore.create(
             document=item,
             type="dreammarket_listing",
-            parser="dreammarket"
+            parser="dreammarket",
+            date=datetime.datetime.strptime(item["timestamp"], "%Y:%m:%d %H:%M:%S").date().strftime("%Y-%m-%d")
         )
 
     def extract_listings(self, soup, timestamp):
@@ -54,11 +55,9 @@ class DreammarketParser(object):
             item["listing_name"] = title_div.find("a").text.strip()
             item["timestamp"] = timestamp
 
-            item["listing_price"] = {
-                # starting at 1 to avoid the bitcoin icon
-                "BTC": float(listing_meta_div.find("div", class_="oPrice").text.strip()[1:]),
-                "escrow": primary_div.find("div", class_="escrowBox").text
-            }
+            # starting at 1 to avoid the bitcoin icon
+            item["listing_price_btc"] = float(listing_meta_div.find("div", class_="oPrice").text.strip()[1:])
+            item["listing_escrow"] = primary_div.find("div", class_="escrowBox").text
 
 
             vendor_name = list(tag for tag in vendor_div.find_all("a") if tag["href"].startswith("./"))[0].text.strip()
@@ -69,11 +68,9 @@ class DreammarketParser(object):
             else:
                 vendor_rating = float(0)
 
-            item["listing_vendor"] = {
-                "name": vendor_name,
-                "transactions": vendor_transactions,
-                "rating": vendor_rating
-            }
+            item["vendor_name"] = vendor_name
+            item["vendor_transactions"] = vendor_transactions
+            item["vendor_rating"] = vendor_rating
 
             yield item
 
