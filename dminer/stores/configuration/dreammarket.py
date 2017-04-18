@@ -60,12 +60,6 @@ class DreammarketConfiguration(object):
                         "listing_price_btc": {
                             "type": "double"
                         },
-                        "listing_escrow": {
-                            "type": "string"
-                        },
-                        "vendor_name": {
-                            "type": "string"
-                        },
                         "vendor_transactions": {
                             "type": "integer"
                         },
