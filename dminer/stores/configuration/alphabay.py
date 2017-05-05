@@ -39,12 +39,10 @@ class AlphabayConfiguration(object):
 
         The explicitly typed fields are as follows:
 
-            listing_price:
-              BTC -> double
-              USD -> double
+            listing_price_btc -> double
+            listing_price_usd -> double
             listing_item_number -> integer
             listing_views -> integer
-            listing_date -> date (yyyy-MM-dd)
             timestamp -> date (yyyy:MM:dd HH:mm:ss)
 
         This configuration also controls the number of replica shards for each

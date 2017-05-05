@@ -38,13 +38,9 @@ class DreammarketConfiguration(object):
 
         The explicitly typed fields are as follows:
 
-            listing_price:
-              BTC -> double
-              escrow -> string
-            listing_vendor:
-              name -> string
-              transactions -> integer
-              rating -> double
+            listing_price_btc -> double
+            vendor_transactions -> integer
+            vendor_rating -> double
             timestamp -> date (yyyy:MM:dd HH:mm:ss:SSS)
         """
 
