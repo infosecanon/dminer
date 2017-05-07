@@ -29,7 +29,12 @@ def prepare_cli(parser):
     )
     parser.add_argument(
         "--url-file",
-        type=str,
+        default=None,
+        help=""
+    )
+    parser.add_argument(
+        "--save-to-directory",
+        default=None,
         help=""
     )
     parser.set_defaults(func=entry)
@@ -51,4 +56,10 @@ def entry(arguments):
         logger.error("This sink requires a deathbycaptcha secret key to be specified through CLI or environment variable.")
         raise SystemExit()
     
-    sink = AlphabaySink()
+    sink = AlphabaySink(
+        arguments.alphabay_username, arguments.alphabay_password,
+        arguments.dbc_access_key, arguments.dbc_secret_key,
+        url_file=arguments.url_file, save_to_directory=arguments.save_to_directory
+    )
+    
+    sink.scrape()

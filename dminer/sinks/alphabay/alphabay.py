@@ -7,12 +7,31 @@ import urlparse, time, os, tempfile, logging
 import helpers
 
 class AlphabaySink(object):
-	def __init__(self, dbc_access_key, dbc_secret_key):
+	def __init__(self, ab_username, ab_password,
+					   dbc_access_key, dbc_secret_key,
+					   url_file=None, save_to_directory=None):
+
+		# Set Alphabay credentials for login
+		self.ab_username = ab_username
+		self.ab_password = ab_password
+		
+		# Specify the url file to pull urls from
+		self.url_file = url_file
+		
+		# Specify the directory to save scrapes to
+		self.save_to_directory = save_to_directory
+		
+		# Spin up this instance sinks selenium instance
 		self.selenium_driver = helpers.launch_selenium_driver()
+		
+		# Bootstrap deathbycaptcha client with supplied credentials
 		self.dbc_client = deathbycaptcha.SocketClient(dbc_access_key, dbc_secret_key)
+		
+		# Create an instance of logging under the module's namespace
 		self.logger = logging.getLogger(__name__)
 
 		self.onion_url = "http://pwoah7foa6au2pul.onion"
+		
 		self.categories = {
 			"cat114": "bm",
 			"cat115": "e",
@@ -108,18 +127,16 @@ class AlphabaySink(object):
 				# Submit the form
 				self.selenium_driver.find_element_by_name("captcha_code").submit()
 
-	def scrape(self, username=None, password=None,
-		             url_file=None, save_directory=None,
-		             **kwargs):
+	def scrape(self):
 
 		# Get past DDOS protection and log in.
 		self.logger.info("Attempting to log in.")
-		self.perform_login(username, password)
+		self.perform_login(self.username, self.password)
 		self.logger.info("Log in successful.")
 
 		# If we are getting urls from a file, grab them now, otherwise, empty list
 		self.logger.info("Fetching urls.")
-		scrape_urls = self.get_urls_from_file(url_file) if url_file else self.get_dynamic_urls()
+		scrape_urls = self.get_urls_from_file(self.url_file) if self.url_file else self.get_dynamic_urls()
 		self.logger.info("Urls fetched.")
 		# Iterate the pulled URLS either from the file or from the dynamic pages
 		for url in scrape_urls:
@@ -138,7 +155,7 @@ class AlphabaySink(object):
 			# }
 			parsed_url, parsed_query = helpers.parse_url(url)
 
-			if save_directory:
+			if self.save_directory:
 				# Iterating through a list of categories so that we can find the category that the
 				# URL contains. If there is no category, then... _shrug_
 				category_found = None
@@ -147,14 +164,14 @@ class AlphabaySink(object):
 						category_found = category
 						break
 
-				if save_directory and category_found:
+				if self.save_directory and category_found:
 					current_time = datetime.now().strftime('%m_%d_%y_%H_%M_%S')
 					file_name = "alphabay_{category}_{timestamp}.html".format(
 						category=category_found,
 						timestamp=current_time
 					)
-					self.logger.info("Saving current page to %s" % os.path.join(save_directory, file_name))
-					self.save_to_directory(save_directory, file_name, file_contents)
+					self.logger.info("Saving current page to %s" % os.path.join(self.save_directory, file_name))
+					self.save_to_directory(self.save_directory, file_name, file_contents)
 					self.logger.info("Current page has been saved.")
 				else:
 					raise Exception("Unable to save scrape to file.")
