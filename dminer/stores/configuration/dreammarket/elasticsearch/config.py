@@ -1,8 +1,8 @@
-from elasticsearch import Elasticsearch
 import logging
+from elasticsearch import Elasticsearch
 
 
-class DreammarketConfiguration(object):
+class DreammarketElasticsearchConfiguration(object):
     """
     Controls the configuration of backend datastores supported by the DreamMarket
     ingestion point. Currently, the spported actions are:
@@ -25,7 +25,7 @@ class DreammarketConfiguration(object):
         self.datastore_port = datastore_port
         self.logger = logging.getLogger(__name__)
 
-    def _create_elasticsearch(self):
+    def create_elasticsearch(self):
         """
         Creates the elasticsearch index configuration for DreamMarket. It does
         this through the creation of the index template:
@@ -76,7 +76,7 @@ class DreammarketConfiguration(object):
         es.indices.put_template("dminer-dreammarket-template", body=settings)
         self.logger.info("Successfully creaetd index template for dminer-dreammarket-*.")
 
-    def _destroy_elasticsearch(self):
+    def destroy_elasticsearch(self):
         """
         Deletes all elasticsearch history for DreamMarket. It will delete all
         indexes matching:

@@ -6,10 +6,10 @@ from StringIO import StringIO
 import urlparse, time, os, tempfile, logging
 import helpers
 
-class AlphabayScraper(object):
-	def __init__(self, *args, **kwargs):
+class AlphabaySink(object):
+	def __init__(self, dbc_access_key, dbc_secret_key):
 		self.selenium_driver = helpers.launch_selenium_driver()
-		self.dbc_client = deathbycaptcha.SocketClient(os.environ.get("DMINER_DBC_ACCESS_KEY", None), os.environ.get("DMINER_DBC_SECRET_KEY", None))
+		self.dbc_client = deathbycaptcha.SocketClient(dbc_access_key, dbc_secret_key)
 		self.logger = logging.getLogger(__name__)
 
 		self.onion_url = "http://pwoah7foa6au2pul.onion"
