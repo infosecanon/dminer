@@ -11,8 +11,8 @@ logger = logging.getLogger(__name__)
 def prepare_cli(parser):
     """
     Prepares the CLI subgroup parser by adding arguments specific to the
-    AlphaBay ingestion point. It also sets the entry point for the CLI
-    to use when specifying this subgroup.
+    AlphaBay ingestion point. It also sets the entry point for the CLI to use 
+    when specifying this subgroup.
     """
     # Ingestion related arguments
     parser.add_argument(
