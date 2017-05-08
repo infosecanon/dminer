@@ -1,4 +1,3 @@
-from dminer.ingestion import AlphabayParser
 from dminer.lib import deathbycaptcha
 from datetime import datetime
 from PIL import Image

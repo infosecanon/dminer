@@ -90,10 +90,12 @@ class AlphabayParser(object):
             item["timestamp"] = timestamp
             yield item
 
-    def parse(self, directory=None, scrape_results=None, **kwargs):
+    def parse(self, directory=None, directory_filename_pattern=None,
+                    scrape_results=None, **kwargs):
         """
-        The fetched files can be controlled
-        Through the use of the environment variable:
+        When ingesting from a directory if a `directory_filename_pattern` is not 
+        specified, the fetched files can be controlled through the use of the
+        environment variable:
 
             DMINER_ALPHABAY_PARSER_FILENAME_FORMAT
 
@@ -106,17 +108,18 @@ class AlphabayParser(object):
             file_pattern = os.environ.get(
                 "DMINER_ALPHABAY_PARSER_FILENAME_FORMAT",
                 ".*(?P<market_name>alphabay)_(?P<market_category>[a-zA-Z]*)_(?P<month>([0-9]{1,2}))_(?P<day>([0-9]{1,2}))_(?P<year>([0-9]{1,4}))_(?P<page>[0-9]{1,2}).html"
-            )
-            files = helpers.get_files(directory)
+            ) if not directory_filename_pattern else directory_filename_pattern
+            
+            files = dminer.ingestion.helpers.get_files(directory)
             for filename in list(f for f in files if re.match(file_pattern, f)):
                 match = re.match(file_pattern, filename)
-                timestamp = helpers.build_filename_timestamp(match)
+                timestamp = dminer.ingestion.helpers.build_filename_timestamp(match)
                 with open(filename, 'rb') as f:
                     soup = BeautifulSoup(f, 'html.parser')
                     for listing in self.extract_listings(soup, timestamp):
                         self._store(listing)
 
-        if scrape_results:
+        elif scrape_results:
             for html_obj in scrape_results:
                 soup = BeautifulSoup(html_obj, 'html.parser')
                 timestamp = datetime.datetime.now().strftime("%Y:%m:%d %H:%M:%S")
