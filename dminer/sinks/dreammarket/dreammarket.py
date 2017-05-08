@@ -1,16 +1,11 @@
-from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.proxy import *
-from selenium import webdriver
-from dminer.ingestion import AlphabayParser
 from dminer.lib import deathbycaptcha
 from datetime import datetime
 from PIL import Image
 import urlparse
 import platform, time, os
-import helpers
+import dminer.sinks.helpers
 
-class DreammarketScraper(object):
+class DreammarketSink(object):
 	def __init__(self, *args, **kwargs):
 		self.datastore = kwargs.get('datastore', None)
 		self.selenium_driver = helpers.launch_selenium_driver()

@@ -10,18 +10,21 @@ def prepare_cli(parser):
         "-d", "--datastore",
         default="elasticsearch",
         const="elasticsearch",
+        nargs="?",
         choices=["elasticsearch"]
     )
     parser.add_argument(
         "-a", "--action",
         default="info",
         const="info",
+        nargs="?",
         choices=["info", "create", "destroy"]
     )
     parser.add_argument(
         "-v", "--verbosity",
         default="info",
         const="info",
+        nargs="?",
         choices=["debug", "info", "warn"]
     )
     parser.set_defaults(func=entry)

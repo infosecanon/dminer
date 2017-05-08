@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
-import json, re, os, logging, datetime, helpers
+import json, re, os, logging, datetime
+import dminer.ingestion.helpers
 
 class AlphabayParser(object):
     """

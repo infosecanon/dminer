@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
-import re, os, logging, datetime, helpers
+import re, os, logging, datetime
+import dminer.ingestion.helpers
 
 class DreammarketParser(object):
     """

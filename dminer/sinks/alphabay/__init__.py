@@ -1,12 +1,17 @@
 """
+TODO: DOC
 """
-import os, sys
+import os
+from dminer.ingestion.alphabay import AlphabayParser
+from dminer.stores.interfaces import ElasticsearchInterface
 from alphabay import *
 
 
 def prepare_cli(parser):
     """
+    TODO: DOC
     """
+    # Sink related arguments
     parser.add_argument(
         "-u", "--alphabay-username",
         default=os.environ.get("DMINER_SINK_ALPHABAY_USERNAME", None),
@@ -28,6 +33,11 @@ def prepare_cli(parser):
         help=""
     )
     parser.add_argument(
+        "--onion-url",
+        default=os.environ.get("DMINER_SINK_DREAMMARKET_ONION_URL", "http://pwoah7foa6au2pul.onion"),
+        help=""
+    )
+    parser.add_argument(
         "--url-file",
         default=None,
         help=""
@@ -37,10 +47,37 @@ def prepare_cli(parser):
         default=None,
         help=""
     )
+    
+    # Flag to also perform ingestion
+    parser.add_argument(
+        "--ingest",
+        action="store_true",
+        help=""
+    )
+    
+    # Datastore related arguments
+    parser.add_argument(
+        "--datastore",
+        default="elasticsearch",
+        const="elasticsearch",
+        choices=["elasticsearch", "none"],
+        help=""
+    )
+    parser.add_argument(
+        "--datastore-host",
+        default="localhost",
+        help=""
+    )
+    parser.add_argument(
+        "--datastore-port",
+        default=9200,
+        help=""
+    )
     parser.set_defaults(func=entry)
 
 def entry(arguments):
     """
+    TODO: DOC
     """
     if not arguments.alphabay_username:
         logger.error("This sink requires a username to be specified through CLI or enviornment variable.")
@@ -59,7 +96,22 @@ def entry(arguments):
     sink = AlphabaySink(
         arguments.alphabay_username, arguments.alphabay_password,
         arguments.dbc_access_key, arguments.dbc_secret_key,
-        url_file=arguments.url_file, save_to_directory=arguments.save_to_directory
+        url_file=arguments.url_file, save_to_directory=arguments.save_to_directory,
+        onion_url=arguments.onion_url
     )
     
-    sink.scrape()
+    if arguments.ingest:
+        if arguments.datastore == "none":
+            parser = AlphabayParser()
+            parser.parse(scrape_results=sink.scrape())
+
+        elif arguments.datastore == "elasticsearch":
+            store = ElasticsearchInterface(
+                host=arguments.datastore_host,
+                port=arguments.datastore_port
+            )
+            
+            parser = AlphabayParser(datastore=store)
+            parser.parse(scrape_results=sink.scrape())
+    else:
+        sink.scrape()

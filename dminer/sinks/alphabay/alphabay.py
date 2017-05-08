@@ -4,12 +4,13 @@ from datetime import datetime
 from PIL import Image
 from StringIO import StringIO
 import urlparse, time, os, tempfile, logging
-import helpers
+import dminer.sinks.helpers
 
 class AlphabaySink(object):
 	def __init__(self, ab_username, ab_password,
 					   dbc_access_key, dbc_secret_key,
-					   url_file=None, save_to_directory=None):
+					   url_file=None, save_to_directory=None,
+					   onion_url="http://pwoah7foa6au2pul.onion"):
 
 		# Set Alphabay credentials for login
 		self.ab_username = ab_username
@@ -30,7 +31,8 @@ class AlphabaySink(object):
 		# Create an instance of logging under the module's namespace
 		self.logger = logging.getLogger(__name__)
 
-		self.onion_url = "http://pwoah7foa6au2pul.onion"
+		# The onion url 
+		self.onion_url = onion_url
 		
 		self.categories = {
 			"cat114": "bm",

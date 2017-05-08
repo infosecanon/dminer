@@ -1,9 +1,11 @@
 """
+TODO: DOC
 """
 import elasticsearch
 
 def prepare_cli(parser):
     """
+    TODO: DOC
     """
     alphabay_subparser = parser.add_subparsers()
     

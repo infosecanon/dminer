@@ -1,4 +1,5 @@
 """
+TODO: DOC
 """
 import alphabay
 import dreammarket
@@ -6,6 +7,7 @@ import master
 
 def prepare_cli(parser):
     """
+    TODO: DOC
     """
     configuration_subparser = parser.add_subparsers()
     

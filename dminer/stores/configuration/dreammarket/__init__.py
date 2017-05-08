@@ -1,9 +1,11 @@
 """
+TODO: DOC
 """
 from elasticsearch import *
 
 def prepare_cli(parser):
     """
+    TODO: DOC
     """
     dreammarket_subparser = parser.add_subparsers()
     

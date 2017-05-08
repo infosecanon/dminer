@@ -1,4 +1,5 @@
 """
+TODO: DOC
 """
 from config import *
 import logging
@@ -7,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 def prepare_cli(parser):
     """
+    TODO: DOC
     """
     parser.add_argument(
         "-r","--remote-host",
@@ -23,6 +25,7 @@ def prepare_cli(parser):
         "-a", "--action",
         default="info",
         const="info",
+        nargs="?",
         choices=["info", "create", "destroy"],
         help=""
     )
@@ -30,6 +33,7 @@ def prepare_cli(parser):
         "-v", "--verbosity",
         default="info",
         const="info",
+        nargs="?",
         choices=["debug", "info", "warn", "error"],
         help=""
     )
@@ -37,6 +41,7 @@ def prepare_cli(parser):
 
 def entry(arguments):
     """
+    TODO: DOC
     """
     logger.setLevel(arguments.verbosity.upper())
     

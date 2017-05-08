@@ -1,10 +1,12 @@
 """
+TODO: DOC
 """
 import configuration
 import interfaces
 
 def prepare_cli(parser):
     """
+    TODO: DOC
     """
     stores_subparser = parser.add_subparsers()
     
