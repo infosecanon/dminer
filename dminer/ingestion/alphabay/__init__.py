@@ -3,7 +3,7 @@ The AlphaBay ingestion module provides the ability to ingest HTML documents
 that have been scraped from the AlphaBay darknet marketplace.
 """
 import logging
-from dminer.stores.interfaces import ElasticsearchInterface
+from dminer.stores.interfaces import ElasticsearchInterface, STDOutInterface
 from alphabay import *
 
 logger = logging.getLogger(__name__)
@@ -35,8 +35,8 @@ def prepare_cli(parser):
     # Datastore related arguments
     parser.add_argument(
         "-d", "--datastore",
-        default="none",
-        choices=["none", "elasticsearch"],
+        default="stdout",
+        choices=["stdout", "elasticsearch"],
         help="""
         Specify the datastore to store parsed entries in. Default is %(default)s.
         """
@@ -65,15 +65,14 @@ def entry(arguments):
     """
     # Set log level to user specified level
     logger.setLevel(arguments.verbosity.upper())
-    # Default to none. Should trigger stdout ingestion (good for testing)
-    store_interface = None
-    if arguments.datastore == "none":
-        store_interface = None
+
+    if arguments.datastore == "stdout":
+        store = STDOutInterface()
     elif arguments.datastore == "elasticsearch":
-        store_interface = ElasticsearchInterface(
+        store = ElasticsearchInterface(
             host=arguments.datastore_host,
             port=arguments.datastore_port
         )
     
-    parser = AlphabayParser(datastore=store_interface)
+    parser = AlphabayParser(datastore=store)
     parser.parse(directory=arguments.ingestion_directory)
