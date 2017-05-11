@@ -1,35 +1,19 @@
 """
+TODO: DOC
 """
-from master import *
+import elasticsearch
 
 
 def prepare_cli(parser):
     """
+    TODO: DOC
     """
-    parser.add_argument(
-        "-d", "--datastore",
-        default="elasticsearch",
-        const="elasticsearch",
-        nargs="?",
-        choices=["elasticsearch"]
-    )
-    parser.add_argument(
-        "-a", "--action",
-        default="info",
-        const="info",
-        nargs="?",
-        choices=["info", "create", "destroy"]
-    )
-    parser.add_argument(
-        "-v", "--verbosity",
-        default="info",
-        const="info",
-        nargs="?",
-        choices=["debug", "info", "warn"]
-    )
-    parser.set_defaults(func=entry)
+    master_subparsers = parser.add_subparsers()
+    
+    master_elasticsearch_subparser = master_subparsers.add_parser("elasticsearch", help=elasticsearch.__doc__)
 
 def entry(arguments):
     """
+    TODO: DOC
     """
     pass
