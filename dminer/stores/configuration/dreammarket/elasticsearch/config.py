@@ -12,9 +12,7 @@ class DreammarketElasticsearchConfiguration(object):
           destroy
     """
 
-    def __init__(self,
-                 datastore_host="localhost",
-                 datastore_port=9200):
+    def __init__(self, host="localhost", port=9200):
         """
         Bootstraps logging & datastore configuration variables.
 
@@ -25,7 +23,7 @@ class DreammarketElasticsearchConfiguration(object):
         self.datastore_port = datastore_port
         self.logger = logging.getLogger(__name__)
 
-    def create_elasticsearch(self):
+    def create(self):
         """
         Creates the elasticsearch index configuration for DreamMarket. It does
         this through the creation of the index template:
@@ -76,7 +74,7 @@ class DreammarketElasticsearchConfiguration(object):
         es.indices.put_template("dminer-dreammarket-template", body=settings)
         self.logger.info("Successfully creaetd index template for dminer-dreammarket-*.")
 
-    def destroy_elasticsearch(self):
+    def destroy(self):
         """
         Deletes all elasticsearch history for DreamMarket. It will delete all
         indexes matching:

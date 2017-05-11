@@ -11,7 +11,7 @@ class AlphabayElasticsearchConfiguration(object):
           destroy
     """
 
-    def __init__(self, datastore_host="localhost", datastore_port=9200):
+    def __init__(self, host="localhost", port=9200):
         """
         Bootstraps logging & datastore configuration variables.
 

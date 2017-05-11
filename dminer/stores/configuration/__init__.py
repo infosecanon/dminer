@@ -7,7 +7,8 @@ import master
 
 def prepare_cli(parser):
     """
-    TODO: DOC
+    Prepares the CLI subgroup parser by adding subgroups for datastore 
+    configuration by each of the supported ingestion modules.
     """
     configuration_subparser = parser.add_subparsers()
     
