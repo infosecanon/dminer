@@ -1,6 +1,6 @@
 """
-The AlphaBay ingestion module provides the ability to ingest HTML documents
-that have been scraped from the AlphaBay darknet marketplace.
+The alphabay ingestion module provides the ability to ingest HTML documents
+that have been scraped from the alphabay darknet marketplace.
 """
 import logging
 from dminer.stores.interfaces import ElasticsearchInterface, STDOutInterface
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 def prepare_cli(parser):
     """
     Prepares the CLI subgroup parser by adding arguments specific to the
-    AlphaBay ingestion point. It also sets the entry point for the CLI to use 
+    alphabay ingestion point. It also sets the entry point for the CLI to use 
     when specifying this subgroup.
     """
     # Ingestion related arguments
@@ -60,7 +60,7 @@ def prepare_cli(parser):
 
 def entry(arguments):
     """
-    The entry point for the AlphaBay ingestion point. Performs execution logic
+    The entry point for the alphabay ingestion point. Performs execution logic
     based on the defined arguments, and their corresponding values.
     """
     # Set log level to user specified level

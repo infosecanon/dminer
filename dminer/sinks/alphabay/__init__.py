@@ -1,5 +1,5 @@
 """
-The AlphaBay sink module provides the ability to scrape raw data (HTML) from
+The alphabay sink module provides the ability to scrape raw data (HTML) from
 the onion site that is hosting it, then (if specified) save it to disk, send it
 through an ingestion point, and save it in a datastore.
 """
@@ -12,7 +12,7 @@ from alphabay import *
 def prepare_cli(parser):
     """
     Prepares the CLI subgroup parser by adding arguments specific to the 
-    AlphaBay sink. It also sets the entry point for the CLI to use when
+    alphabay sink. It also sets the entry point for the CLI to use when
     specifying this subgroup.
     """
     # Sink related arguments
