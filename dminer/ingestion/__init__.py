@@ -7,7 +7,8 @@ import dreammarket
 
 def prepare_cli(parser):
     """
-    TODO: DOC
+    Prepares the CLI subgroup parser by adding subgroups for ingestion points.
+    Subgroups provide the entry point for this parser.
     """
     ingestion_parsers = parser.add_subparsers()
     

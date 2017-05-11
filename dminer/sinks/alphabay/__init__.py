@@ -5,13 +5,15 @@ through an ingestion point, and save it in a datastore.
 """
 import os
 from dminer.ingestion.alphabay import AlphabayParser
-from dminer.stores.interfaces import ElasticsearchInterface
+from dminer.stores.interfaces import ElasticsearchInterface, STDOutInterface
 from alphabay import *
 
 
 def prepare_cli(parser):
     """
-    TODO: DOC
+    Prepares the CLI subgroup parser by adding arguments specific to the 
+    AlphaBay sink. It also sets the entry point for the CLI to use when
+    specifying this subgroup.
     """
     # Sink related arguments
     parser.add_argument(
@@ -46,7 +48,7 @@ def prepare_cli(parser):
         default=os.environ.get("DMINER_DBC_SECRET_KEY", None),
         help="""
         Specifies the secret key to use for deathbycaptcha. It is also able to 
-        be specified as an environment variable: DMINER_SINK_ALPHABAY_USERNAME.
+        be specified as an environment variable: DMINER_DBC_SECRET_KEY.
         This is required for this sink module.
         """
     )
@@ -72,8 +74,8 @@ def prepare_cli(parser):
         "--save-to-directory",
         default=None,
         help="""
-        If specified, the sink will save all scraped HTML files to the specified
-        directory.
+        If specified, the sink will attempt to save all scraped HTML files to 
+        the specified directory.
         """
     )
     
@@ -116,7 +118,9 @@ def prepare_cli(parser):
 
 def entry(arguments):
     """
-    TODO: DOC
+    The entry point for the alphabay sink CLI interface. This defines the logic 
+    around the usage of command line arguments and the alphabay sink in order
+    to perform scraping, ingestion, and storage related functions.
     """
     if not arguments.alphabay_username:
         logger.error("This sink requires a username to be specified through CLI or enviornment variable.")
