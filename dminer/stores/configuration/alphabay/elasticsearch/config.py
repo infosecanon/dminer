@@ -1,4 +1,5 @@
 import logging
+from pprint import pformat
 from elasticsearch import Elasticsearch
 
 class AlphabayElasticsearchConfiguration(object):
@@ -15,12 +16,12 @@ class AlphabayElasticsearchConfiguration(object):
         """
         Bootstraps logging & datastore configuration variables.
 
-        The `datastore_host` and `datastore_port` are used inside of the
+        The `host` and `port` are used inside of the
         individual database configuration functions for configuration.
         """
 
-        self.datastore_host = datastore_host
-        self.datastore_port = datastore_port
+        self.host = host
+        self.port = port
         self.logger = logging.getLogger(__name__)
 
     def create(self):
@@ -78,10 +79,10 @@ class AlphabayElasticsearchConfiguration(object):
 
         es = Elasticsearch(
             [
-                ":".join([self.datastore_host, str(self.datastore_port)])
+                ":".join([self.host, str(self.port)])
             ]
         )
-        self.logger.info("Creating index template for dminer-alphabay-* with settings: %s" % str(settings))
+        self.logger.info("Creating index template for dminer-alphabay-* with settings: \n%s" % pformat(settings))
         es.indices.put_template("dminer-alphabay-template", body=settings)
         self.logger.info("Successfully creaetd index template for dminer-alphabay-*.")
 
@@ -97,7 +98,7 @@ class AlphabayElasticsearchConfiguration(object):
             dminer-alphabay-template
         """
 
-        es = Elasticsearch([":".join([str(self.datastore_host), str(self.datastore_port)])])
+        es = Elasticsearch([":".join([str(self.host), str(self.port)])])
         self.logger.info("Deleting index: dminer-alphabay-*")
         es.indices.delete("dminer-alphabay-*")
         self.logger.info("Deleting index template: dminer-dreammarket-template")

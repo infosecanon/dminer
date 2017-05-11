@@ -1,8 +1,8 @@
 """
 The alphabay configuration module provides the ability to interact with datastores
-containing - or eventually to contain - ingested alphabay data. This includes
+containing - or eventually to containing - ingested alphabay data. This includes
 viewing info about existing schemas & data, creating the schema in a blank
-datastore, as well as deletion of existing data in a datastore.
+datastore, and deletion of existing data from a datastore.
 """
 import elasticsearch
 

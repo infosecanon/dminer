@@ -1,5 +1,7 @@
 """
-TODO: DOC
+The store configuration module provides abilities to interact with datastores
+in an interactive fashion, such as retrieving datastore info, creating schemas,
+and destroying datastores.
 """
 import alphabay
 import dreammarket
@@ -8,7 +10,7 @@ import master
 def prepare_cli(parser):
     """
     Prepares the CLI subgroup parser by adding subgroups for datastore 
-    configuration by each of the supported ingestion modules.
+    configuration by each of the supported configuration modules.
     """
     configuration_subparser = parser.add_subparsers()
     

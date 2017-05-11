@@ -1,4 +1,5 @@
 import logging
+from pprint import pformat
 from elasticsearch import Elasticsearch
 
 
@@ -16,11 +17,11 @@ class DreammarketElasticsearchConfiguration(object):
         """
         Bootstraps logging & datastore configuration variables.
 
-        The `datastore_host` and `datastore_port` are used inside of the
+        The `host` and `port` are used inside of the
         individual database configuration functions for configuration.
         """
-        self.datastore_host = datastore_host
-        self.datastore_port = datastore_port
+        self.host = host
+        self.port = port
         self.logger = logging.getLogger(__name__)
 
     def create(self):
@@ -69,8 +70,8 @@ class DreammarketElasticsearchConfiguration(object):
             }
         }
 
-        es = Elasticsearch([":".join([str(self.datastore_host), str(self.datastore_port)])])
-        self.logger.info("Creating index template for dminer-dreammarket-* with settings: %s" % str(settings))
+        es = Elasticsearch([":".join([str(self.host), str(self.port)])])
+        self.logger.info("Creating index template for dminer-dreammarket-* with settings: \n%s" % pformat(settings))
         es.indices.put_template("dminer-dreammarket-template", body=settings)
         self.logger.info("Successfully creaetd index template for dminer-dreammarket-*.")
 
@@ -86,7 +87,7 @@ class DreammarketElasticsearchConfiguration(object):
             dminer-dreammarket-template
         """
 
-        es = Elasticsearch([":".join([str(self.datastore_host), str(self.datastore_port)])])
+        es = Elasticsearch([":".join([str(self.host), str(self.port)])])
         self.logger.info("Deleting index: dminer-dreammarket-*")
         es.indices.delete("dminer-dreammarket-*")
         self.logger.info("Deleting index template: dminer-dreammarket-template")
