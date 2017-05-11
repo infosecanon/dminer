@@ -1,6 +1,6 @@
 """
 The AlphaBay sink module provides the ability to scrape raw data (HTML) from
-the onion site that is hosting then (if specified) save it to disk, send it
+the onion site that is hosting it, then (if specified) save it to disk, send it
 through an ingestion point, and save it in a datastore.
 """
 import os
