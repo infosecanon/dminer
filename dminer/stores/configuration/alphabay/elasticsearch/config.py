@@ -4,20 +4,16 @@ from elasticsearch import Elasticsearch
 
 class AlphabayElasticsearchConfiguration(object):
     """
-    Controls the configuration of backend datastores supported by the Alphabay
+    Controls the configuration of elasticsearch supported by the Alphabay
     ingestion point. Currently, the spported actions are:
 
-        Elasticsearch:
           create
           destroy
     """
 
     def __init__(self, host="localhost", port=9200):
         """
-        Bootstraps logging & datastore configuration variables.
-
-        The `host` and `port` are used inside of the
-        individual database configuration functions for configuration.
+        Bootstraps logging & elasticsearch configuration variables.
         """
 
         self.host = host
@@ -103,3 +99,9 @@ class AlphabayElasticsearchConfiguration(object):
         es.indices.delete("dminer-alphabay-*")
         self.logger.info("Deleting index template: dminer-dreammarket-template")
         es.indices.delete_template("dminer-alphabay-template")
+
+    def info(self):
+        """
+        TODO: DOC
+        """
+        pass

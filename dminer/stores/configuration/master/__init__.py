@@ -11,9 +11,4 @@ def prepare_cli(parser):
     master_subparsers = parser.add_subparsers()
     
     master_elasticsearch_subparser = master_subparsers.add_parser("elasticsearch", help=elasticsearch.__doc__)
-
-def entry(arguments):
-    """
-    TODO: DOC
-    """
-    pass
+    elasticsearch.prepare_cli(master_elasticsearch_subparser)
