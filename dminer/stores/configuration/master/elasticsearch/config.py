@@ -28,7 +28,6 @@ class MasterElasticsearchConfiguration(object):
         TODO: DOC
         """
         for driver in self.config_drivers:
-            print "hit"
             driver.create()
 
     def destroy(self):
