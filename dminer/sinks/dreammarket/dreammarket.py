@@ -1,9 +1,16 @@
-from dminer.lib import deathbycaptcha
+"""
+TODO: DOC
+"""
+import urlparse
+import platform
+import time
+import os
+
 from datetime import datetime
 from PIL import Image
-import urlparse
-import platform, time, os
+
 import dminer.sinks.helpers
+from dminer.lib import deathbycaptcha
 
 class DreammarketSink(object):
 	def __init__(self, *args, **kwargs):

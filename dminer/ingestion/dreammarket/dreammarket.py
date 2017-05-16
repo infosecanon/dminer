@@ -1,23 +1,29 @@
+"""
+TODO: DOC
+"""
+import re
+import os
+import logging
+import datetime
 from bs4 import BeautifulSoup
-import re, os, logging, datetime
+
 import dminer.ingestion.helpers
+from dminer.ingestion.base.parser import BaseParser
+from dminer.ingestion.base.exceptions import DataStoreNotSpecifiedError
 
 class DreammarketParser(object):
     """
-    The DreammarketParser controls the parsing logic for html pages and objects
+    The `dminer.ingestion.dreammarket.DreammarketParser` controls the parsing logic for html pages and objects
     passed to it. It results in the creation of
     """
     def __init__(self, datastore=None):
-        """
-
-        """
         self.datastore = datastore
         self.logger = logging.getLogger(__name__)
 
-    def _store(self, item):
+    def store(self, item):
         """
         Stores a given item to the datastore. If the datastore is none, an
-        error will be raised (`dminer.ingestion.dreammarket.DataStoreNotSpecifiedError`).
+        error will be raised  (`dminer.ingestion.base.exceptions.DataStoreNotSpecifiedError`).
         """
         if isinstance(self.datastore, type(None)):
             raise DataStoreNotSpecifiedError("A datastore must be present in order to store a parsed result.")
@@ -104,16 +110,11 @@ class DreammarketParser(object):
                 with open(filename, 'rb') as f:
                     soup = BeautifulSoup(f, 'html.parser')
                     for listing in self.extract_listings(soup, timestamp):
-                        self._store(listing)
+                        self.store(listing)
 
         elif scrape_results:
             for html_obj in scrape_results:
                 soup = BeautifulSoup(hmtl_obj, 'html.parser')
                 timestamp = datetime.datetime.now().strftime("%Y:%m:%d %H:%M:%S")
                 for listing in self.extract_listings(soup, timestamp):
-                    self._store(listing)
-
-class DataStoreNotSpecifiedError(Exception):
-    """
-    """
-    pass
+                    self.store(listing)

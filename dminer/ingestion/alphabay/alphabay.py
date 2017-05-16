@@ -1,22 +1,32 @@
+"""
+TODO: DOC
+"""
+import json
+import re
+import os
+import logging
+import datetime
 from bs4 import BeautifulSoup
-import json, re, os, logging, datetime
+
 import dminer.ingestion.helpers
+from dminer.ingestion.base.parser import BaseParser
+from dminer.ingestion.base.exceptions import DataStoreNotSpecifiedError
 
-class AlphabayParser(object):
+class AlphabayParser(BaseParser):
     """
+    The `dminer.ingestion.alphabay.AlphabayParser` controls the parsing logic
+    for html pages and objects that are have been saved or scraped.
     """
-
     def __init__(self, datastore=None):
-        """
-        """
 
         self.datastore = datastore
         self.logger = logging.getLogger(__name__)
 
-    def _store(self, item):
+    def store(self, item):
         """
+        Stores a given item to the datastore. If the datastore is None, an error
+        will be raised (`dminer.ingestion.base.exceptions.DataStoreNotSpecifiedError`).
         """
-
         if isinstance(self.datastore, type(None)):
             raise DataStoreNotSpecifiedError("A datastore must be present in order to store a parsed result.")
         self.datastore.create(
@@ -28,8 +38,10 @@ class AlphabayParser(object):
 
     def extract_listings(self, bs_obj, timestamp):
         """
+        Extracts each alphabay listing from the given `bs_obj` (`bs4.BeautifulSoup`)
+        object. The listings will then be associated to the passed `timestamp`.
+        Listings are then yielded (as this is a generator function).
         """
-
         listings = bs_obj.find_all("div", class_="listing")
         for listing_element in listings:
             image_div = listing_element.find("div", class_="tcl")
@@ -103,7 +115,6 @@ class AlphabayParser(object):
 
             export DMINER_ALPHABAY_PARSER_FILENAME_FORMAT=".*(?P<market_name>alphabay)_(?P<market_category>.*)_(?P<month>\d\d)_(?P<day>\d\d)_(?P<year>\d\d).html"
         """
-
         if directory:
             file_pattern = os.environ.get(
                 "DMINER_ALPHABAY_PARSER_FILENAME_FORMAT",
@@ -117,16 +128,11 @@ class AlphabayParser(object):
                 with open(filename, 'rb') as f:
                     soup = BeautifulSoup(f, 'html.parser')
                     for listing in self.extract_listings(soup, timestamp):
-                        self._store(listing)
+                        self.store(listing)
 
         elif scrape_results:
             for html_obj in scrape_results:
                 soup = BeautifulSoup(html_obj, 'html.parser')
                 timestamp = datetime.datetime.now().strftime("%Y:%m:%d %H:%M:%S")
                 for listing in self.extract_listings(soup, timestamp):
-                    self._store(listing)
-
-class DataStoreNotSpecifiedError(Exception):
-    """
-    """
-    pass
+                    self.store(listing)

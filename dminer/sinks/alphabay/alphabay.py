@@ -1,9 +1,19 @@
-from dminer.lib import deathbycaptcha
+"""
+TODO: DOC
+"""
+import urlparse
+import time
+import os
+import tempfile
+import logging
+
 from datetime import datetime
 from PIL import Image
 from StringIO import StringIO
-import urlparse, time, os, tempfile, logging
+
 import dminer.sinks.helpers
+from dminer.lib import deathbycaptcha
+
 
 class AlphabaySink(object):
 	def __init__(self, ab_username, ab_password,
