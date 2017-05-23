@@ -108,25 +108,7 @@ class AlphabaySink(object):
 				onion_url=self.onion_url
 			)
 		)
-		#---- Known Bug ----#
-		# Once the captcha fails once the captcha box moves down the page
-		# due to the warning, thus DBC doesnt get the correct png to
-		# interpret captcha. Check crop dimensions (crop_dim).
-
-		# Determine if the page sent us to the DDoS page or main page
-		(283,430, 510,510)
-		ddos_crop_dim = (145,130,305,205)
-		while "DDoS Protection" in self.selenium_driver.title:
-			self.loggger.info("Attempting to bypass captcha for DDoS Protection...")
-			with dminer.sinks.helpers.wait_for_page_load(self.selenium_driver):
-				# Enter the captcha
-				self.bypass_captcha("answer", ddos_crop_dim)
-				# Submit the form
-				self.selenium_driver.find_element_by_name("answer").submit()
-
-		login_crop_dim = (250,380,450,450)
 		while "Login" in self.selenium_driver.title:
-			self.logger.info("Attempting to bypass captcha for Login...")
 			with dminer.sinks.helpers.wait_for_page_load(self.selenium_driver):
 				# Enter the username
 				input_element = self.selenium_driver.find_element_by_name("user")
@@ -135,7 +117,12 @@ class AlphabaySink(object):
 				input_element = self.selenium_driver.find_element_by_name("pass")
 				input_element.send_keys(password)
 				# Enter the captcha
-				self.bypass_captcha("captcha_code", login_crop_dim)
+				dminer.sinks.helpers.solve_captcha(
+					self.selenium_driver,
+					self.dbc_client,
+					self.selenium_driver.find_element_by_id("captcha"),
+					self.selenium_driver.find_element_by_name("captcha_code")
+				)
 				# Submit the form
 				self.selenium_driver.find_element_by_name("captcha_code").submit()
 

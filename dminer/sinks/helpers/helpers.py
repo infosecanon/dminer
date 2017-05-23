@@ -1,3 +1,13 @@
+import platform
+import urlparse
+import logging
+import tempfile
+
+from contextlib import contextmanager
+from StringIO import StringIO
+from PIL import Image
+
+import selenium.common.exceptions
 from selenium import webdriver
 from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 from selenium.webdriver.common.keys import Keys
@@ -5,13 +15,13 @@ from selenium.webdriver.common.proxy import *
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support.expected_conditions import staleness_of
 
-from contextlib import contextmanager
-import platform, urlparse, logging
 
 logger = logging.getLogger(__name__)
 
 def launch_selenium_driver():
-
+	"""
+	TODO: DOC
+	"""
 	#Building the profile, setting the port equal to tor on localhost
 	profile = webdriver.FirefoxProfile()
 	profile.set_preference("network.proxy.type", 1)
@@ -49,14 +59,72 @@ def launch_selenium_driver():
 
 
 def parse_url(url):
+	"""
+	TODO: DOC
+	"""
 	parsed_url = urlparse.urlparse(url)
 	parsed_query = urlparse.parse_qs(parsed_url.query)
 	return (parsed_url, parsed_query)
 
 @contextmanager
 def wait_for_page_load(driver, timeout=30):
-	old_page = driver.find_element_by_tag_name('html')
+	"""
+	TODO: DOC
+	"""
+	while True:
+		try:
+			old_page = driver.find_element_by_tag_name('html')
+			break
+		except selenium.common.exceptions.NoSuchElementException:
+			pass
 	yield
 	WebDriverWait(driver, timeout).until(
 	    staleness_of(old_page)
 	)
+
+
+def solve_captcha(selenium_driver, dbc_instance, 
+				  image_element, entry_element):
+	"""
+	TODO: DOC
+	"""
+	# Create a temporary file to store on-disk. Needed for use with DBC
+	temp_captcha_file = tempfile.NamedTemporaryFile()
+	
+	# Needed to do the element cropping calculations
+	image_element_location = image_element.location
+	image_element_size = image_element.size
+	
+	# Save as base64 so that we can decode directly into a StringIO "file-like"
+	# object for direct manipulation.
+	captcha_image = Image.open(StringIO(selenium_driver.get_screenshot_as_png()))
+	# Crop to the captcha image
+	captcha_image = captcha_image.crop(
+		(
+			# left
+			image_element_location['x'],
+			# Top
+			image_element_location['y'],
+			# Right
+			image_element_location['x'] + image_element_size['width'],
+			# Bottom
+			image_element_location['y'] + image_element_size['height']
+		)
+	)
+	# Save the captcha to the temp file.
+	captcha_image.save(temp_captcha_file.name, "png", quality=90)
+	
+	# Attempt to solve the captcha
+	captcha_result = dbc_instance.decode(temp_captcha_file.name, 200)
+	
+	# Will close handle and delete file
+	temp_captcha_file.close()
+	
+	# Pull the captcha text for entry and enter them
+	entry_element.send_keys(captcha_result["text"])
+	
+	
+	
+	
+	
+	
