@@ -41,7 +41,7 @@ def launch_selenium_driver():
 		binary = FirefoxBinary('/usr/bin/firefox')
 
 	logger.info("Launching Firefox.")
-	driver = webdriver.Firefox(firefox_binary=binary, firefox_profile=profile)
+	driver = webdriver.Firefox(firefox_profile=profile)
 	logger.info("Firefox launched.")
 	driver.set_window_size(1000, 1000)
 

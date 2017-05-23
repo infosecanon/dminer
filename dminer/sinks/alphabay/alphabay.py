@@ -32,7 +32,7 @@ class AlphabaySink(object):
 		self.save_to_directory = save_to_directory
 		
 		# Spin up this instance sinks selenium instance
-		self.selenium_driver = helpers.launch_selenium_driver()
+		self.selenium_driver = dminer.sinks.helpers.launch_selenium_driver()
 		
 		# Bootstrap deathbycaptcha client with supplied credentials
 		self.dbc_client = deathbycaptcha.SocketClient(dbc_access_key, dbc_secret_key)
@@ -53,7 +53,7 @@ class AlphabaySink(object):
 			"cat86": "ce"
 		}
 
-	def save_to_directory(self, directory, file_name, file_contents):
+	def save_file(self, directory, file_name, file_contents):
 		if os.path.exists(directory):
 			with open(os.path.join(directory, file_name), "wb") as f_obj:
 				f_obj.write(file_contents)
@@ -114,10 +114,11 @@ class AlphabaySink(object):
 		# interpret captcha. Check crop dimensions (crop_dim).
 
 		# Determine if the page sent us to the DDoS page or main page
+		(283,430, 510,510)
 		ddos_crop_dim = (145,130,305,205)
 		while "DDoS Protection" in self.selenium_driver.title:
 			self.loggger.info("Attempting to bypass captcha for DDoS Protection...")
-			with helpers.wait_for_page_load(self.selenium_driver):
+			with dminer.sinks.helpers.wait_for_page_load(self.selenium_driver):
 				# Enter the captcha
 				self.bypass_captcha("answer", ddos_crop_dim)
 				# Submit the form
@@ -126,7 +127,7 @@ class AlphabaySink(object):
 		login_crop_dim = (250,380,450,450)
 		while "Login" in self.selenium_driver.title:
 			self.logger.info("Attempting to bypass captcha for Login...")
-			with helpers.wait_for_page_load(self.selenium_driver):
+			with dminer.sinks.helpers.wait_for_page_load(self.selenium_driver):
 				# Enter the username
 				input_element = self.selenium_driver.find_element_by_name("user")
 				input_element.send_keys(username)
@@ -139,10 +140,9 @@ class AlphabaySink(object):
 				self.selenium_driver.find_element_by_name("captcha_code").submit()
 
 	def scrape(self):
-
 		# Get past DDOS protection and log in.
 		self.logger.info("Attempting to log in.")
-		self.perform_login(self.username, self.password)
+		self.perform_login(self.ab_username, self.ab_password)
 		self.logger.info("Log in successful.")
 
 		# If we are getting urls from a file, grab them now, otherwise, empty list
@@ -152,7 +152,7 @@ class AlphabaySink(object):
 		# Iterate the pulled URLS either from the file or from the dynamic pages
 		for url in scrape_urls:
 			self.logger.info("Attempting to scrape %s" % url)
-			with helpers.wait_for_page_load(self.selenium_driver):
+			with dminer.sinks.helpers.wait_for_page_load(self.selenium_driver):
 				self.selenium_driver.get(url)
 				# Grab the page source for the given url
 				file_contents = self.selenium_driver.execute_script("return document.documentElement.outerHTML").encode("UTF-8")
@@ -164,9 +164,9 @@ class AlphabaySink(object):
 			#	"param": ["lol"]
 			#	"other_param": ["cats"]
 			# }
-			parsed_url, parsed_query = helpers.parse_url(url)
+			parsed_url, parsed_query = dminer.sinks.helpers.parse_url(url)
 
-			if self.save_directory:
+			if self.save_to_directory:
 				# Iterating through a list of categories so that we can find the category that the
 				# URL contains. If there is no category, then... _shrug_
 				category_found = None
@@ -175,14 +175,14 @@ class AlphabaySink(object):
 						category_found = category
 						break
 
-				if self.save_directory and category_found:
+				if self.save_to_directory and category_found:
 					current_time = datetime.now().strftime('%m_%d_%y_%H_%M_%S')
 					file_name = "alphabay_{category}_{timestamp}.html".format(
 						category=category_found,
 						timestamp=current_time
 					)
-					self.logger.info("Saving current page to %s" % os.path.join(self.save_directory, file_name))
-					self.save_to_directory(self.save_directory, file_name, file_contents)
+					self.logger.info("Saving current page to %s" % os.path.join(self.save_to_directory, file_name))
+					self.save_file(self.save_to_directory, file_name, file_contents)
 					self.logger.info("Current page has been saved.")
 				else:
 					raise Exception("Unable to save scrape to file.")

@@ -4,10 +4,12 @@ the onion site that is hosting it, then (if specified) save it to disk, send it
 through an ingestion point, and save it in a datastore.
 """
 import os
+import logging
 from dminer.ingestion.alphabay import AlphabayParser
 from dminer.stores.interfaces import ElasticsearchInterface, STDOutInterface
 from alphabay import *
 
+logger = logging.getLogger(__name__)
 
 def prepare_cli(parser):
     """
@@ -78,6 +80,14 @@ def prepare_cli(parser):
         the specified directory.
         """
     )
+    parser.add_argument(
+        "-v", "--verbosity",
+        default="info",
+        choices=["debug", "info", "warn", "error"],
+        help="""
+        Controls the verbosity of the ingestion point. Default is %(default)s.
+        """
+    )
     
     # Flag to also perform ingestion
     parser.add_argument(
@@ -122,6 +132,7 @@ def entry(arguments):
     around the usage of command line arguments and the alphabay sink in order
     to perform scraping, ingestion, and storage related functions.
     """
+    logger.setLevel(arguments.verbosity.upper())
     if not arguments.alphabay_username:
         logger.error("This sink requires a username to be specified through CLI or enviornment variable.")
         raise SystemExit()
@@ -142,6 +153,7 @@ def entry(arguments):
         url_file=arguments.url_file, save_to_directory=arguments.save_to_directory,
         onion_url=arguments.onion_url
     )
+    sink.logger = logger
     
     if arguments.ingest:
         if arguments.datastore == "stdout":
@@ -159,4 +171,4 @@ def entry(arguments):
             parser = AlphabayParser(datastore=store)
             parser.parse(scrape_results=sink.scrape())
     else:
-        sink.scrape()
+        list(sink.scrape())
