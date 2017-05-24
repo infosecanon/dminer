@@ -1,31 +1,26 @@
-from elasticsearch import Elasticsearch
 import logging
+from pprint import pformat
+from elasticsearch import Elasticsearch
 
 
-class DreammarketConfiguration(object):
+class DreammarketElasticsearchConfiguration(object):
     """
-    Controls the configuration of backend datastores supported by the DreamMarket
+    Controls the configuration of elasticsearch supported by the dreammarket
     ingestion point. Currently, the spported actions are:
-
-        Elasticsearch:
-          create
-          destroy
+    
+        create
+        destroy
     """
 
-    def __init__(self,
-                 datastore_host="localhost",
-                 datastore_port=9200):
+    def __init__(self, host="localhost", port=9200):
         """
-        Bootstraps logging & datastore configuration variables.
-
-        The `datastore_host` and `datastore_port` are used inside of the
-        individual database configuration functions for configuration.
+        Bootstraps logging & elasticsearch configuration variables.
         """
-        self.datastore_host = datastore_host
-        self.datastore_port = datastore_port
+        self.host = host
+        self.port = port
         self.logger = logging.getLogger(__name__)
 
-    def _create_elasticsearch(self):
+    def create(self):
         """
         Creates the elasticsearch index configuration for DreamMarket. It does
         this through the creation of the index template:
@@ -71,12 +66,12 @@ class DreammarketConfiguration(object):
             }
         }
 
-        es = Elasticsearch([":".join([str(self.datastore_host), str(self.datastore_port)])])
-        self.logger.info("Creating index template for dminer-dreammarket-* with settings: %s" % str(settings))
+        es = Elasticsearch([":".join([str(self.host), str(self.port)])])
+        self.logger.info("Creating index template for dminer-dreammarket-* with settings: \n%s" % pformat(settings))
         es.indices.put_template("dminer-dreammarket-template", body=settings)
         self.logger.info("Successfully creaetd index template for dminer-dreammarket-*.")
 
-    def _destroy_elasticsearch(self):
+    def destroy(self):
         """
         Deletes all elasticsearch history for DreamMarket. It will delete all
         indexes matching:
@@ -88,8 +83,14 @@ class DreammarketConfiguration(object):
             dminer-dreammarket-template
         """
 
-        es = Elasticsearch([":".join([str(self.datastore_host), str(self.datastore_port)])])
+        es = Elasticsearch([":".join([str(self.host), str(self.port)])])
         self.logger.info("Deleting index: dminer-dreammarket-*")
         es.indices.delete("dminer-dreammarket-*")
         self.logger.info("Deleting index template: dminer-dreammarket-template")
         es.indices.delete_template("dminer-dreammarket-template")
+
+    def info(self):
+        """
+        TODO: DOC
+        """
+        pass

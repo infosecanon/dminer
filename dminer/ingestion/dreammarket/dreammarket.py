@@ -1,22 +1,29 @@
+"""
+TODO: DOC
+"""
+import re
+import os
+import logging
+import datetime
 from bs4 import BeautifulSoup
-import re, os, logging, datetime, helpers
+
+import dminer.ingestion.helpers
+from dminer.ingestion.base.parser import BaseParser
+from dminer.ingestion.base.exceptions import DataStoreNotSpecifiedError
 
 class DreammarketParser(object):
     """
-    The DreammarketParser controls the parsing logic for html pages and objects
+    The `dminer.ingestion.dreammarket.DreammarketParser` controls the parsing logic for html pages and objects
     passed to it. It results in the creation of
     """
     def __init__(self, datastore=None):
-        """
-
-        """
         self.datastore = datastore
         self.logger = logging.getLogger(__name__)
 
-    def _store(self, item):
+    def store(self, item):
         """
         Stores a given item to the datastore. If the datastore is none, an
-        error will be raised (`dminer.ingestion.dreammarket.DataStoreNotSpecifiedError`).
+        error will be raised  (`dminer.ingestion.base.exceptions.DataStoreNotSpecifiedError`).
         """
         if isinstance(self.datastore, type(None)):
             raise DataStoreNotSpecifiedError("A datastore must be present in order to store a parsed result.")
@@ -96,23 +103,18 @@ class DreammarketParser(object):
                 "DMINER_DREAMMARKET_PARSER_FILENAME_FORMAT",
                 ".*(?P<market_name>dreammarket)_(?P<market_category>[a-zA-Z]*)_(?P<month>([0-9]{1,2}))_(?P<day>([0-9]{1,2}))_(?P<year>([0-9]{1,4}))_(?P<page>[0-9]{1,2}).html"
             )
-            files = helpers.get_files(directory)
+            files = dminer.ingestion.helpers.get_files(directory)
             for filename in list(f for f in files if re.match(file_pattern, f)):
                 match = re.match(file_pattern, filename)
-                timestamp = helpers.build_filename_timestamp(match)
+                timestamp = dminer.ingestion.helpers.build_filename_timestamp(match)
                 with open(filename, 'rb') as f:
                     soup = BeautifulSoup(f, 'html.parser')
                     for listing in self.extract_listings(soup, timestamp):
-                        self._store(listing)
+                        self.store(listing)
 
-        if scrape_results:
+        elif scrape_results:
             for html_obj in scrape_results:
                 soup = BeautifulSoup(hmtl_obj, 'html.parser')
                 timestamp = datetime.datetime.now().strftime("%Y:%m:%d %H:%M:%S")
                 for listing in self.extract_listings(soup, timestamp):
-                    self._store(listing)
-
-class DataStoreNotSpecifiedError(Exception):
-    """
-    """
-    pass
+                    self.store(listing)

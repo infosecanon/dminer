@@ -1,7 +1,7 @@
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConnectionTimeout
 
-class ESDataStore(object):
+class ElasticsearchInterface(object):
     def __init__(self, host='localhost', port=9200):
         self.host = host
         self.port = port
