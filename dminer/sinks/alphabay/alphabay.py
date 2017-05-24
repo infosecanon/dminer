@@ -53,62 +53,43 @@ class AlphabaySink(object):
 			"cat86": "ce"
 		}
 
-	def save_file(self, directory, file_name, file_contents):
-		if os.path.exists(directory):
-			with open(os.path.join(directory, file_name), "wb") as f_obj:
-				f_obj.write(file_contents)
-		else:
-			raise Exception("Directory was not found.")
-
-	def get_urls_from_file(self, file_path):
-		urls = []
-
-		if os.path.exists(file_path):
-			with open(file_path, "r") as f_obj:
-				for line in f_obj:
-					urls.append(line)
-		else:
-			raise Exception("URL file not found.")
-
-		return urls
-
 	def get_dynamic_urls(self):
 		urls = []
 		return urls
 
-	def bypass_captcha(self, captcha_element, crop_dim):
-		# Uses a temporary file so that we do not have to deal with cleanup
-		temp_screenshot = tempfile.NamedTemporaryFile()
-		# Open the screenshot and crop to captcha
-		screenshot_image = Image.open(StringIO(self.selenium_driver.get_screenshot_as_base64().decode("base64")))
-		screenshot_image = screenshot_image.crop(crop_dim)
-		# Write the captcha out to disk
-		screenshot_image.save(temp_screenshot.name, "png", quality=90)
-
-		self.logger.info("Requesting deathbycaptcha solution...")
-		try:
-			captcha = self.dbc_client.decode(temp_screenshot.name, 200)
-		except deathbycaptcha.AccessDeniedException:
-			self.logger.error("Login problems, banned?")
-			raise
-
-		if captcha:
-			captcha_id = captcha["captcha"]
-			captcha_text = captcha["text"]
-			# Enter the captcha
-			input_element = self.selenium_driver.find_element_by_name(captcha_element)
-			input_element.send_keys(captcha_text)
-		# Done with the screenshot, will close handle and delete file
-		temp_screenshot.close()
-
 	def perform_login(self, username, password):
+		"""
+		TODO: DOC
+		"""
 		self.logger.info("Requesting login page.")
 		self.selenium_driver.get(
 			"{onion_url}/login.php".format(
 				onion_url=self.onion_url
 			)
 		)
-		while "Login" in self.selenium_driver.title:
+		while "login" in self.selenium_driver.title.lower():
+			with dminer.sinks.helpers.wait_for_page_load(self.selenium_driver):
+				# Enter the username
+				input_element = self.selenium_driver.find_element_by_name("user")
+				input_element.send_keys(username)
+				# Enter the password
+				input_element = self.selenium_driver.find_element_by_name("pass")
+				input_element.send_keys(password)
+				# Enter the captcha
+				dminer.sinks.helpers.solve_captcha(
+					self.selenium_driver,
+					self.dbc_client,
+					self.selenium_driver.find_element_by_id("captcha"),
+					self.selenium_driver.find_element_by_name("captcha_code")
+				)
+				# Submit the form
+				self.selenium_driver.find_element_by_name("captcha_code").submit()
+	
+	def perform_ddos_prevention(self, username, password):
+		"""
+		TODO: DOC
+		"""
+		while "ddos" in self.selenium_driver.title.lower():
 			with dminer.sinks.helpers.wait_for_page_load(self.selenium_driver):
 				# Enter the username
 				input_element = self.selenium_driver.find_element_by_name("user")
@@ -127,20 +108,28 @@ class AlphabaySink(object):
 				self.selenium_driver.find_element_by_name("captcha_code").submit()
 
 	def scrape(self):
+		"""
+		TODO: DOC
+		"""
 		# Get past DDOS protection and log in.
 		self.logger.info("Attempting to log in.")
 		self.perform_login(self.ab_username, self.ab_password)
-		self.logger.info("Log in successful.")
 
 		# If we are getting urls from a file, grab them now, otherwise, empty list
 		self.logger.info("Fetching urls.")
-		scrape_urls = self.get_urls_from_file(self.url_file) if self.url_file else self.get_dynamic_urls()
-		self.logger.info("Urls fetched.")
+		scrape_urls = dminer.sinks.helpers.get_urls_from_file(self.url_file) if self.url_file else self.get_dynamic_urls()
 		# Iterate the pulled URLS either from the file or from the dynamic pages
 		for url in scrape_urls:
 			self.logger.info("Attempting to scrape %s" % url)
 			with dminer.sinks.helpers.wait_for_page_load(self.selenium_driver):
 				self.selenium_driver.get(url)
+				# If we are asked to log in again, we log in again
+				if "login" in self.selenium_driver.title.lower():
+					self.perform_login()
+				# If we are presented the ddos prevention page, bypass captcha
+				# and credential request
+				if "ddos" in self.selenium_driver.title.lower():
+					self.perform_ddos_prevention()
 				# Grab the page source for the given url
 				file_contents = self.selenium_driver.execute_script("return document.documentElement.outerHTML").encode("UTF-8")
 
@@ -169,13 +158,10 @@ class AlphabaySink(object):
 						timestamp=current_time
 					)
 					self.logger.info("Saving current page to %s" % os.path.join(self.save_to_directory, file_name))
-					self.save_file(self.save_to_directory, file_name, file_contents)
+					dminer.sinks.helpers.save_file(self.save_to_directory, file_name, file_contents)
 					self.logger.info("Current page has been saved.")
 				else:
 					raise Exception("Unable to save scrape to file.")
-				# Yield file contents for passing to the parser
 				yield file_contents
-
 			else:
-				# Yield the file contents for passing to the parser
 				yield file_contents

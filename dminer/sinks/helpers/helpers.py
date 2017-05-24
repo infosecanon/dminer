@@ -1,3 +1,4 @@
+import os
 import platform
 import urlparse
 import logging
@@ -20,7 +21,8 @@ logger = logging.getLogger(__name__)
 
 def launch_selenium_driver():
 	"""
-	TODO: DOC
+	This helper launches the selenium driver with a Firefox profile configured
+	based on the environment variables set.
 	"""
 	#Building the profile, setting the port equal to tor on localhost
 	profile = webdriver.FirefoxProfile()
@@ -124,7 +126,28 @@ def solve_captcha(selenium_driver, dbc_instance,
 	entry_element.send_keys(captcha_result["text"])
 	
 	
-	
-	
+def save_file(directory, file_name, file_contents):
+	"""
+	TODO: DOC
+	"""
+	if os.path.exists(directory):
+		with open(os.path.join(directory, file_name), "wb") as f_obj:
+			f_obj.write(file_contents)
+	else:
+		raise Exception("Directory was not found.")
+
+def get_urls_from_file(file_path):
+	"""
+	TODO: DOC
+	"""
+	urls = []
+
+	if os.path.exists(file_path):
+		with open(file_path, "r") as f_obj:
+			for line in f_obj:
+				urls.append(line)
+	else:
+		raise Exception("URL file not found.")
+	return urls
 	
 	
