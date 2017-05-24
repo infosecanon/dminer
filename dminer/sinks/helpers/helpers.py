@@ -62,7 +62,8 @@ def launch_selenium_driver():
 
 def parse_url(url):
 	"""
-	TODO: DOC
+	This method parses a url to identify the base URL and query parameters. It
+	returns a tuple of the parsed values.
 	"""
 	parsed_url = urlparse.urlparse(url)
 	parsed_query = urlparse.parse_qs(parsed_url.query)
@@ -71,7 +72,8 @@ def parse_url(url):
 @contextmanager
 def wait_for_page_load(driver, timeout=30):
 	"""
-	TODO: DOC
+	This method waits for the selenium driver to completely load a page before
+	execution continues (for the wrapped scope).
 	"""
 	while True:
 		try:
@@ -88,7 +90,11 @@ def wait_for_page_load(driver, timeout=30):
 def solve_captcha(selenium_driver, dbc_instance, 
 				  image_element, entry_element):
 	"""
-	TODO: DOC
+	This method alows for the solving of captchas. By providing the image
+	element and entry element, this method will screenshot the page, crop
+	to the captcha, then upload the captcha to deathbycaptcha. After being
+	returned a solution, it will then enter the derived text 
+	(from deathbycaptcha) into the entry element.
 	"""
 	# Create a temporary file to store on-disk. Needed for use with DBC
 	temp_captcha_file = tempfile.NamedTemporaryFile()
@@ -128,7 +134,8 @@ def solve_captcha(selenium_driver, dbc_instance,
 	
 def save_file(directory, file_name, file_contents):
 	"""
-	TODO: DOC
+	This method will attempt to save a file to the specified file, in the
+	specified directory, with the given file contents.
 	"""
 	if os.path.exists(directory):
 		with open(os.path.join(directory, file_name), "wb") as f_obj:
@@ -138,7 +145,8 @@ def save_file(directory, file_name, file_contents):
 
 def get_urls_from_file(file_path):
 	"""
-	TODO: DOC
+	This method attempts to parse urls from a file. It considers each line to
+	be a URL.
 	"""
 	urls = []
 

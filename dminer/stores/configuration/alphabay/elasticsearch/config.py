@@ -102,6 +102,7 @@ class AlphabayElasticsearchConfiguration(object):
 
     def info(self):
         """
-        TODO: DOC
+        This method provides information regarding the alphabay elasticsearch
+        configuration currently in the specified database.
         """
         pass

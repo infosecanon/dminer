@@ -1,6 +1,6 @@
 """
 The `dminer.ingestion.base.parser` module provides base classes for subclassing
-in various parsers.
+in parsers.
 """
 
 class BaseParser(object):

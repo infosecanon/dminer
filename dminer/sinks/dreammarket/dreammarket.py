@@ -17,7 +17,6 @@ class DreammarketSink(object):
 		self.datastore = kwargs.get('datastore', None)
 		self.selenium_driver = helpers.launch_selenium_driver()
 
-
 		self.categories = {
 			"cat136": "ce",
 			"cat135": "c",

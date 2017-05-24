@@ -19,7 +19,8 @@ from dminer.lib import deathbycaptcha
 
 class AlphabaySink(object):
 	"""
-	TODO: DOC
+	The alphabay sink provides functionality for scraping, saving, and ingesting
+	content from the alphabay site.
 	"""
 	def __init__(self, ab_username, ab_password,
 					   dbc_access_key, dbc_secret_key,
