@@ -1,5 +1,5 @@
 """
-TODO: DOC
+This module provides a set of general purpose helpers for use in parser logic.
 """
 import os
 

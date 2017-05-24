@@ -1,5 +1,7 @@
 """
-TODO: DOC
+The alphabay sink module provides functionality for scraping content from the
+alphabay site, as well as passing it to the appropriate ingestion interface,
+and saving scrapes for later processing.
 """
 import urlparse
 import time
@@ -16,6 +18,9 @@ from dminer.lib import deathbycaptcha
 
 
 class AlphabaySink(object):
+	"""
+	TODO: DOC
+	"""
 	def __init__(self, ab_username, ab_password,
 					   dbc_access_key, dbc_secret_key,
 					   url_file=None, save_to_directory=None,
@@ -54,12 +59,18 @@ class AlphabaySink(object):
 		}
 
 	def get_dynamic_urls(self):
+		"""
+		This method provides URLs to scrape based off of the links scraped off
+		of the page (specifically categories).
+		"""
 		urls = []
 		return urls
 
 	def perform_login(self, username, password):
 		"""
-		TODO: DOC
+		This method accesses the login page of the alphabay market, and proceeds
+		to enter credentials and bypass the captcha on the login page. It will
+		perform these actions until the login page is successfully bypassed.
 		"""
 		self.logger.info("Requesting login page.")
 		self.selenium_driver.get(
@@ -87,7 +98,8 @@ class AlphabaySink(object):
 	
 	def perform_ddos_prevention(self, username, password):
 		"""
-		TODO: DOC
+		This method allows for the bypassing of the ddos protection page. It
+		will continue attempting to bypass it until it succeeds.
 		"""
 		while "ddos" in self.selenium_driver.title.lower():
 			with dminer.sinks.helpers.wait_for_page_load(self.selenium_driver):
@@ -109,7 +121,13 @@ class AlphabaySink(object):
 
 	def scrape(self):
 		"""
-		TODO: DOC
+		This method performs the actual scraping of the alphabay site, which 
+		includes the fetching of URLS to be processed, requests made to the site,
+		as well as saving the scrapes to a directory for later ingestion, or
+		yielding them to the ingestion point.
+		
+		Note: This function is a generator, and must be itereated to invoke
+		processing.
 		"""
 		# Get past DDOS protection and log in.
 		self.logger.info("Attempting to log in.")

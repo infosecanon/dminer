@@ -1,13 +1,22 @@
+"""
+TODO: DOC
+"""
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConnectionTimeout
 
 class ElasticsearchInterface(object):
+    """
+    TODO: DOC
+    """
     def __init__(self, host='localhost', port=9200):
         self.host = host
         self.port = port
         self.es = Elasticsearch([":".join([str(host), str(port)])])
 
     def create(self, *args, **kwargs):
+        """
+        TODO: DOC
+        """
         date = kwargs.get("date", None)
         parser = kwargs.get('parser', 'default')
         doctype = kwargs.get('type', 'default')
@@ -37,10 +46,19 @@ class ElasticsearchInterface(object):
         return value
 
     def find(self, *args, **kwargs):
+        """
+        TODO: DOC
+        """
         return self.es.search(*args, **kwargs)
 
     def delete(self, index, doctype, doc_id):
+        """
+        TODO: DOC
+        """
         raise NotImplementedError("Implement me, yo.")
 
     def update(self, index, doctype, doc_id, document):
+        """
+        TODO: DOC
+        """
         raise NotImplementedError("Implement me, yo.")

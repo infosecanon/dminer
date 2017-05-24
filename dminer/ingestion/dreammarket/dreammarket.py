@@ -1,5 +1,6 @@
 """
-TODO: DOC
+The dreammarket parser module provides functionality for parsing scraped content
+and passing it to the appropriate datastore interface.
 """
 import re
 import os
