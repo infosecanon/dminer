@@ -91,6 +91,7 @@ class DreammarketElasticsearchConfiguration(object):
 
     def info(self):
         """
-        TODO: DOC
+        This method provides information regarding the dreammarket elasticsearch
+        configuration currently in the specified database.
         """
         pass

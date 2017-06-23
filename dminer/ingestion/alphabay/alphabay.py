@@ -21,7 +21,22 @@ class AlphabayParser(BaseParser):
     def __init__(self, datastore=None):
 
         self.datastore = datastore
+        self.datastore_name = datastore.__class__.__name__.lower()
+        print self.datastore_name
         self.logger = logging.getLogger(__name__)
+
+    def store_elasticsearch(self, item):
+        """
+        Stores the given item in the elasticsearch database specified by
+        the datastore.
+        """
+        self.datastore.create(
+            index="dminer-alphabay-{date}".format(
+                date=datetime.datetime.strptime(item["timestamp"], "%Y:%m:%d %H:%M:%S").date().strftime("%Y-%m-%d")
+            ),
+            doc_type= "alphabay_listing",
+            body=item
+        )
 
     def store(self, item):
         """
@@ -30,12 +45,9 @@ class AlphabayParser(BaseParser):
         """
         if isinstance(self.datastore, type(None)):
             raise DataStoreNotSpecifiedError("A datastore must be present in order to store a parsed result.")
-        self.datastore.create(
-            document=item,
-            type="alphabay_listing",
-            parser="alphabay",
-            date=datetime.datetime.strptime(item["timestamp"], "%Y:%m:%d %H:%M:%S").date().strftime("%Y-%m-%d")
-        )
+        
+        if self.datastore_name == "elasticsearchinterface":
+            self.store_elasticsearch(item)
 
     def extract_listings(self, bs_obj, timestamp):
         """

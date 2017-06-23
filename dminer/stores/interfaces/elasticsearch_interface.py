@@ -1,12 +1,13 @@
 """
-TODO: DOC
+This module provides an interface to the Elasticsearch database.
 """
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConnectionTimeout
 
 class ElasticsearchInterface(object):
     """
-    TODO: DOC
+    The Elasticsearch interface manages the connection to the elasticsearch
+    database.
     """
     def __init__(self, host='localhost', port=9200):
         self.host = host
@@ -15,30 +16,31 @@ class ElasticsearchInterface(object):
 
     def create(self, *args, **kwargs):
         """
-        TODO: DOC
+        The create method allows for documents passed to be elasticsearch handler
+        directly.
         """
-        date = kwargs.get("date", None)
-        parser = kwargs.get('parser', 'default')
-        doctype = kwargs.get('type', 'default')
-        document = kwargs.get('document', {})
-
-        if date:
-            # Index document into an index based on index_date field
-            options = {
-                "index": "dminer-%s-%s" % (parser, date),
-                "doc_type": doctype,
-                "body": document
-            }
-        else:
-            options = {
-                "index": "dminer-%s" % parser,
-                "doc_type": doctype,
-                "body": document
-            }
+        # date = kwargs.get("date", None)
+        # parser = kwargs.get('parser', 'default')
+        # doctype = kwargs.get('type', 'default')
+        # document = kwargs.get('document', {})
+        # 
+        # if date:
+        #     # Index document into an index based on index_date field
+        #     options = {
+        #         "index": "dminer-%s-%s" % (parser, date),
+        #         "doc_type": doctype,
+        #         "body": document
+        #     }
+        # else:
+        #     options = {
+        #         "index": "dminer-%s" % parser,
+        #         "doc_type": doctype,
+        #         "body": document
+        #     }
 
         while True:
             try:
-                value = self.es.index(**options)
+                value = self.es.index(*args, **kwargs)
             except ConnectionTimeout:
                 print "Connection Timeout"
                 continue
@@ -47,18 +49,19 @@ class ElasticsearchInterface(object):
 
     def find(self, *args, **kwargs):
         """
-        TODO: DOC
+        Allows for the searching of documents currently in the elasticsearch
+        database.
         """
         return self.es.search(*args, **kwargs)
 
     def delete(self, index, doctype, doc_id):
         """
-        TODO: DOC
+        TODO: IMPLEMENT
         """
-        raise NotImplementedError("Implement me, yo.")
+        raise NotImplementedError()
 
     def update(self, index, doctype, doc_id, document):
         """
-        TODO: DOC
+        TODO: IMPLEMENT
         """
-        raise NotImplementedError("Implement me, yo.")
+        raise NotImplementedError()

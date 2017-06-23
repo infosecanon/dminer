@@ -158,4 +158,13 @@ def get_urls_from_file(file_path):
 		raise Exception("URL file not found.")
 	return urls
 	
-	
+def clone_selenium_session_to_requests(selenium_driver, requests_session):
+	"""
+	Pulls all cookies set in the selenium driver and clones them into the
+	requests session.
+	"""
+	for cookie in selenium_driver.get_cookies():
+		requests_session.cookies.set(
+			cookie["name"],
+			cookie["value"]
+		)

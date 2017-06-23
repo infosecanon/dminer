@@ -1,5 +1,5 @@
 """
-TODO: DOC
+TODO: IMPLEMENT
 """
 
 class STDOutInterface(object):
@@ -14,19 +14,19 @@ class STDOutInterface(object):
     
     def find(self, obj):
         """
-        TODO: DOC
+        TODO: IMPLEMENT
         """
         raise DatastoreOperationNotSupportedException()
     
     def delete(self, obj):
         """
-        TODO: DOC
+        TODO: IMPLEMENT
         """
         raise DatastoreOperationNotSupportedException()
     
     def update(self, obj):
         """
-        TODO: ODC
+        TODO: IMPLEMENT
         """
         raise DatastoreOperationNotSupportedException()
     

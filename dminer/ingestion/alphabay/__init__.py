@@ -8,6 +8,7 @@ from alphabay import *
 
 logger = logging.getLogger(__name__)
 
+
 def prepare_cli(parser):
     """
     Prepares the CLI subgroup parser by adding arguments specific to the
@@ -31,7 +32,7 @@ def prepare_cli(parser):
         Controls the verbosity of the ingestion point. Default is %(default)s.
         """
     )
-    
+
     # Datastore related arguments
     parser.add_argument(
         "-d", "--datastore",
@@ -58,6 +59,7 @@ def prepare_cli(parser):
     )
     parser.set_defaults(func=entry)
 
+
 def entry(arguments):
     """
     The entry point for the alphabay ingestion point. Performs execution logic
@@ -73,6 +75,6 @@ def entry(arguments):
             host=arguments.datastore_host,
             port=arguments.datastore_port
         )
-    
+
     parser = AlphabayParser(datastore=store)
     parser.parse(directory=arguments.ingestion_directory)
