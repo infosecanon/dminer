@@ -9,10 +9,9 @@ import os
 import tempfile
 import logging
 import requests
+import random
 
 from datetime import datetime
-from PIL import Image
-from StringIO import StringIO
 from bs4 import BeautifulSoup
 
 import dminer.sinks.helpers
@@ -28,7 +27,7 @@ class AlphabaySink(object):
                  dbc_access_key, dbc_secret_key,
                  url_file=None, save_to_directory=None,
                  onion_url="http://pwoah7foa6au2pul.onion",
-                 request_interval=0.5):
+                 request_interval=2, request_retries=5):
 
         # Set Alphabay credentials for login
         self.ab_username = ab_username
@@ -45,6 +44,9 @@ class AlphabaySink(object):
 
         # Set the interval between requests
         self.request_interval = request_interval
+
+        # Set the number of attempts to make on a URL that is being redirected
+        self.retry_attempts = request_retries
 
         # Bootstrap deathbycaptcha client with supplied credentials
         self.dbc_client = deathbycaptcha.SocketClient(
@@ -124,6 +126,7 @@ class AlphabaySink(object):
         This method allows for the bypassing of the ddos protection page. It
         will continue attempting to bypass it until it succeeds.
         """
+        self.logger.info("Performing DDOS prevention.")
         while True:
             if "ddos" in self.selenium_driver.title.lower():
                 # Enter the username
@@ -153,20 +156,6 @@ class AlphabaySink(object):
             )
         # Move into a headless session, since we bypassed DDOS/Login
         self.convert_headless(selenium_driver, self.requests_session)
-
-    def maybe_handle_bypass(self, response, url):
-        """
-        TODO: DOC
-        """
-        parsed_response = BeautifulSoup(response.content, "html.parser")
-        if "login" in parsed_response.html.title.string.lower():
-            self.perform_login(self.ab_username, self.ab_password)
-            response = self.requests_session.get(url)
-        elif "ddos" in parsed_response.html.title.string.lower():
-            self.perform_ddos_prevention(self.ab_username, self.ab_password)
-            response = self.requests_session.get(url)
-
-        return response
 
     def convert_headless(self, selenium_driver):
         """
@@ -240,6 +229,60 @@ class AlphabaySink(object):
                 file_name, response
             )
 
+    def perform_request(self, url):
+        """
+        TODO: DOC
+        """
+        response_success = False
+        retry_attempts = self.retry_attempts
+        # Pull down the page source into `response.text`
+        self.logger.info("Requesting: %s" % url)
+        while retry_attempts > 0:
+            # Perform the request, without following redirects. If we are
+            # redirected, then we need to make sure we handle it correctly,
+            # as it could be to a login/ddos page, or to the home page.
+            response = self.requests_session.get(url, allow_redirects=False)
+
+            # If the response status is 200, then we are fine to exit early
+            if response.status_code == 200:
+                return response, True
+            # If the response status is 302, then we were being redirected.
+            elif response.status_code == 302:
+                # If we were being redirected to the login page, we will
+                # reauthenticate.
+                if "login" in response.headers["Location"].lower():
+                    self.perform_login(
+                        self.ab_username, self.ab_password
+                    )
+                # If we were being redirected to the DDOS prevention page,
+                # we will perform the ddos prevention.
+                elif "ddos" in response.headers["Location"].lower():
+                    self.perform_ddos_prevention(
+                        self.ab_username, self.ab_password
+                    )
+                # If it's neither the DDOS prevention page or the login page,
+                # we know it's the index page, and that we need to try again
+                # (if we have enough retry attempts left).
+                elif "index" in response.headers["Location"].lower():
+                    self.logger.error(
+                        "Redirection from {original_url} to {redirect_url}".format(
+                            original_url=url,
+                            redirect_url=response.headers["Location"]
+                        )
+                    )
+                    retry_attempts -= 1
+                else:
+                    raise Exception(
+                        "Redirection from {original_url} to {redirect_url}".format(
+                            original_url=url,
+                            redirect_url=response.headers["Location"]
+                        )
+                    )
+            # Sleep for a random amount in between attempts, to prevent looking
+            # like a bot.
+            time.sleep(random.randrange(0, self.request_interval))
+        return response, False
+
     def scrape(self):
         """
         This method performs the actual scraping of the alphabay site, which
@@ -264,18 +307,10 @@ class AlphabaySink(object):
             else self.get_dynamic_urls()
 
         for url in scrape_urls:
-            # Sleep the thread to force maximum request interval of the
-            # specified interval
-            time.sleep(self.request_interval)
-            # Pull down the page source into `response.text`
-            self.logger.info("Requesting: %s" % url)
-            response = self.requests_session.get(url)
-            # Verify that the page is not a DDOS/Login page, and if it is,
-            # bypass and fetch the URL
-            response = self.maybe_handle_bypass(response, url)
-
-            # Save the file to disk, if the flag is set to do so
-            if self.save_to_directory:
-                # Save the file out
-                self.save_out(url, response.text.encode("UTF-8"))
-            yield response.text.encode("UTF-8")
+            response, response_success = self.perform_request(url)
+            if response_success:
+                # Save the file to disk, if the flag is set to do so
+                if self.save_to_directory:
+                    # Save the file out
+                    self.save_out(url, response.text.encode("UTF-8"))
+                yield response.text.encode("UTF-8")
