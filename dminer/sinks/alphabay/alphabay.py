@@ -238,6 +238,9 @@ class AlphabaySink(object):
         # Pull down the page source into `response.text`
         self.logger.info("Requesting: %s" % url)
         while retry_attempts > 0:
+            # Sleep for a random amount in between attempts, to prevent looking
+            # like a bot.
+            time.sleep(random.randrange(0, self.request_interval))
             # Perform the request, without following redirects. If we are
             # redirected, then we need to make sure we handle it correctly,
             # as it could be to a login/ddos page, or to the home page.
@@ -278,9 +281,6 @@ class AlphabaySink(object):
                             redirect_url=response.headers["Location"]
                         )
                     )
-            # Sleep for a random amount in between attempts, to prevent looking
-            # like a bot.
-            time.sleep(random.randrange(0, self.request_interval))
         return response, False
 
     def scrape(self):
