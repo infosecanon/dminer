@@ -4,9 +4,9 @@ import urlparse
 import logging
 import tempfile
 
+from PIL import Image
 from contextlib import contextmanager
 from StringIO import StringIO
-from PIL import Image
 
 import selenium.common.exceptions
 from selenium import webdriver
@@ -52,12 +52,12 @@ def launch_selenium_driver():
     # Setting the binary path for firefox, using platform for cross
     # commpatibility, if you don't want to use platform remove platform and
     # set the path manually.
-    if(platform.system() == 'Windows'):
+    if platform.system() == "Windows":
         binary = FirefoxBinary(
             "C:\\Program Files (x86)\\Mozilla Firefox\\Firefox.exe"
         )
     else:
-        binary = FirefoxBinary('/usr/bin/firefox')
+        binary = FirefoxBinary("/usr/bin/firefox")
 
     logger.info("Launching Firefox.")
     driver = webdriver.Firefox(firefox_profile=profile)

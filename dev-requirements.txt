@@ -4,3 +4,4 @@ selenium
 image
 pdoc
 requests
+requests[socks]

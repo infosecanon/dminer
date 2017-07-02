@@ -3,13 +3,13 @@ The alphabay sink module provides functionality for scraping content from the
 alphabay site, as well as passing it to the appropriate ingestion interface,
 and saving scrapes for later processing.
 """
-import urlparse
 import time
 import os
-import tempfile
 import logging
 import requests
 import random
+import copy
+import urllib
 
 from datetime import datetime
 from bs4 import BeautifulSoup
@@ -27,7 +27,8 @@ class AlphabaySink(object):
                  dbc_access_key, dbc_secret_key,
                  url_file=None, save_to_directory=None,
                  onion_url="http://pwoah7foa6au2pul.onion",
-                 request_interval=2, request_retries=5):
+                 request_interval=15, request_retries=5,
+                 request_timeout=5, category="security & hosting"):
 
         # Set Alphabay credentials for login
         self.ab_username = ab_username
@@ -48,6 +49,9 @@ class AlphabaySink(object):
         # Set the number of attempts to make on a URL that is being redirected
         self.retry_attempts = request_retries
 
+        # Set the request timeout on a URL
+        self.request_timeout = request_timeout
+
         # Bootstrap deathbycaptcha client with supplied credentials
         self.dbc_client = deathbycaptcha.SocketClient(
             dbc_access_key, dbc_secret_key
@@ -59,15 +63,44 @@ class AlphabaySink(object):
         # The onion url
         self.onion_url = onion_url
 
-        self.categories = {
-            "cat114": "bm",
-            "cat115": "e",
-            "cat116": "ek",
-            "cat117": "ss",
-            "cat119": "o1",
-            "cat124": "o2",
-            "cat86": "ce"
-        }
+        # Set the category to scrape
+        self.category = category
+
+    def get_categories(self):
+        """
+        This method returns a mapping of category names to category URL's.
+        It is built by requesting the index page of the market, and parsing
+        the HTML to extract categories for scraping.
+        """
+        categories = {}
+
+        self.logger.info("Fetching index for categories.")
+        # We request the homepage so that we can get the top-level FRC ids.
+        home_page, request_success = self.perform_request(
+            "{onion_url}/index.php".format(
+                onion_url=self.onion_url
+            )
+        )
+
+        if not request_success:
+            raise Exception(
+                "Unable to request the index page to fetch categories."
+            )
+        parsed_home = BeautifulSoup(
+            home_page.text.encode("UTF-8"), "html.parser"
+        )
+
+        self.logger.info("Parsing index for category URLS.")
+        # Iterate through the FRC ids to build the mapping between category
+        # text names and urls.
+        for category_link_element in parsed_home.find_all("a", class_="category"):
+            category_name = category_link_element.text.lower().strip()
+            category_url = "{onion_url}/{category_url}".format(
+                onion_url=self.onion_url,
+                category_url=category_link_element["href"]
+            )
+            categories[category_name] = category_url
+        return categories
 
     def get_dynamic_urls(self):
         """
@@ -75,6 +108,86 @@ class AlphabaySink(object):
         of the page (specifically categories).
         """
         urls = []
+
+        # We pull the categories so that we can fetch the start/stop page URLS
+        categories = self.get_categories()
+
+        # Try to pull the category name from our category mapping, if it exists
+        try:
+            category_url = categories[self.category]
+        except KeyError:
+            raise Exception("The specified market category was not found.")
+
+        category_page, request_success = self.perform_request(category_url)
+        if not request_success:
+            raise Exception(
+                "Unable to request the category page ({category})".format(
+                    category=self.category
+                )
+            )
+
+        self.logger.info(
+            "Parsing category page ({category}) for page URLS.".format(
+                category=self.category
+            )
+        )
+        parsed_category_page = BeautifulSoup(
+            category_page.text.encode("UTF-8"), "html.parser"
+        )
+
+        # Find the last page button based on the last.png img tag's parent
+        # element.
+        last_page_button_img = parsed_category_page.find(
+            "img",
+            {
+                "class": "std",
+                "src": "images/last.png"
+            }
+        )
+        if not last_page_button_img:
+            raise Exception(
+                "Unable to identify the last page image element."
+            )
+
+        # If the element exists, grab the parent element, since the parent is
+        # what contains the relative path with the query parameters we are
+        # looking for
+        last_page_button_parent = last_page_button_img.parent
+        if not last_page_button_parent:
+            raise Exception(
+                "Unable to identify the last page image element parent."
+            )
+
+        last_page_url = "{onion_url}/{last_page}".format(
+            onion_url=self.onion_url,
+            last_page=last_page_button_parent["href"]
+        )
+
+        last_page_url, last_page_params = dminer.sinks.helpers.parse_url(
+            last_page_url
+        )
+        # Build the last page number so that we can iterate & build the pages
+        # up to it
+        last_page_number = int("".join(last_page_params["pg"]))
+
+        for page_num in range(1, last_page_number + 1):
+            page_params = copy.deepcopy(last_page_params)
+            page_params["pg"] = [str(page_num)]
+            # Flatten the parameters
+            page_params = dict(
+                (k, v[0]) for k, v in page_params.iteritems()
+            )
+            # Append the built URL
+            urls.append(
+                "{onion_url}{page_path}".format(
+                    onion_url=self.onion_url,
+                    page_path="{path}?{params}".format(
+                        path=last_page_url.path,
+                        params=urllib.urlencode(page_params)
+                    )
+                )
+            )
+
         return urls
 
     def perform_login(self, username, password):
@@ -159,7 +272,11 @@ class AlphabaySink(object):
 
     def convert_headless(self, selenium_driver):
         """
-        TODO: DOC
+        This method converts the session stored in the selenium driver into
+        the instance's request session. It does so by disgarding the old
+        session object for this instance and replacing it with a new requests
+        session with the selenium session transfered into it. This method
+        also closes the selenium driver once the session has been cloned.
         """
         # Create a requests session to populate with the new session created
         # in selenium.
@@ -192,46 +309,32 @@ class AlphabaySink(object):
 
     def save_out(self, url, response):
         """
-        TODO: DOC
+        This method saves a response to the instance specified directory,
+        with a filename based on the time of saving and the category of the
+        response.
         """
-        # Parses the URL into a URL object, and parses the query into a
-        # dictionary of key:value
-        #
-        # For example:
-        # www.google.com/my/leet/page?param=lol&other_param=cats
-        # is parsed into:
-        # {
-        #    "param": ["lol"]
-        #    "other_param": ["cats"]
-        # }
-        parsed_url, parsed_query = dminer.sinks.helpers.parse_url(url)
-
-        category_found = None
-        for category in self.categories.keys():
-            if category in parsed_query:
-                category_found = category
-                break
-
-        if category_found:
-            current_time = datetime.now().strftime('%m_%d_%y_%H_%M_%S')
-            file_name = "alphabay_{category}_{timestamp}.html".format(
-                category=category_found,
-                timestamp=current_time
+        current_time = datetime.now().strftime('%m_%d_%y_%H_%M_%S')
+        file_name = "alphabay_{category}_{timestamp}.html".format(
+            category=self.category,
+            timestamp=current_time
+        )
+        self.logger.info(
+            "Saving {url} page to {disk_path}".format(
+                url=url,
+                disk_path=os.path.join(self.save_to_directory, file_name)
             )
-            self.logger.info(
-                "Saving {url} page to {disk_path}".format(
-                    url=url,
-                    disk_path=os.path.join(self.save_to_directory, file_name)
-                )
-            )
-            dminer.sinks.helpers.save_file(
-                self.save_to_directory,
-                file_name, response
-            )
+        )
+        dminer.sinks.helpers.save_file(
+            self.save_to_directory,
+            file_name, response
+        )
 
     def perform_request(self, url):
         """
-        TODO: DOC
+        This method performs a request and returns the request object. It
+        has various checks based on the instance settings, such as verifying
+        that the user is signed in, performing login when the user becomes
+        deauthenticated, and handling request timeout/interval/redirections.
         """
         response_success = False
         retry_attempts = self.retry_attempts
@@ -240,11 +343,21 @@ class AlphabaySink(object):
         while retry_attempts > 0:
             # Sleep for a random amount in between attempts, to prevent looking
             # like a bot.
-            time.sleep(random.randrange(0, self.request_interval))
+            sleep_time = random.randrange(0, self.request_interval)
+            self.logger.info("Sleeping thread for %is" % sleep_time)
+            time.sleep(sleep_time)
             # Perform the request, without following redirects. If we are
             # redirected, then we need to make sure we handle it correctly,
             # as it could be to a login/ddos page, or to the home page.
-            response = self.requests_session.get(url, allow_redirects=False)
+            try:
+                response = self.requests_session.get(
+                    url,
+                    allow_redirects=False,
+                    timeout=self.request_timeout
+                )
+            except requests.exceptions.ConnectionError:
+                self.logger.error("Request timeout, retrying.")
+                continue
 
             # If the response status is 200, then we are fine to exit early
             if response.status_code == 200:
@@ -274,6 +387,8 @@ class AlphabaySink(object):
                         )
                     )
                     retry_attempts -= 1
+                # We fail hard if we don't know where we are being redirected
+                # to, since this is not an expected condition.
                 else:
                     raise Exception(
                         "Redirection from {original_url} to {redirect_url}".format(
@@ -283,7 +398,7 @@ class AlphabaySink(object):
                     )
         return response, False
 
-    def scrape(self):
+    def scrape(self, daemon=False):
         """
         This method performs the actual scraping of the alphabay site, which
         includes the fetching of URLS to be processed, requests made to the
@@ -298,19 +413,23 @@ class AlphabaySink(object):
         # Get an Alphabay session through selenium due to the captcha
         self.perform_login(self.ab_username, self.ab_password)
 
-        # If we are getting urls from a file, grab them now, otherwise, empty
-        # list
-        self.logger.info("Fetching urls.")
-        scrape_urls = \
-            dminer.sinks.helpers.get_urls_from_file(self.url_file) \
-            if self.url_file \
-            else self.get_dynamic_urls()
+        while True:
+            # If we are getting urls from a file, grab them now, otherwise,
+            # empty list
+            self.logger.info("Fetching urls.")
+            scrape_urls = \
+                dminer.sinks.helpers.get_urls_from_file(self.url_file) \
+                if self.url_file \
+                else self.get_dynamic_urls()
+            self.logger.info("Fetched %s urls." % str(len(scrape_urls)))
 
-        for url in scrape_urls:
-            response, response_success = self.perform_request(url)
-            if response_success:
-                # Save the file to disk, if the flag is set to do so
-                if self.save_to_directory:
-                    # Save the file out
-                    self.save_out(url, response.text.encode("UTF-8"))
-                yield response.text.encode("UTF-8")
+            for url in scrape_urls:
+                response, response_success = self.perform_request(url)
+                if response_success:
+                    # Save the file to disk, if the flag is set to do so
+                    if self.save_to_directory:
+                        # Save the file out
+                        self.save_out(url, response.text.encode("UTF-8"))
+                    yield response.text.encode("UTF-8")
+            if not daemon:
+                break
