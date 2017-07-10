@@ -22,7 +22,6 @@ class AlphabayParser(BaseParser):
 
         self.datastore = datastore
         self.datastore_name = datastore.__class__.__name__.lower()
-        print self.datastore_name
         self.logger = logging.getLogger(__name__)
 
     def store_elasticsearch(self, item):
