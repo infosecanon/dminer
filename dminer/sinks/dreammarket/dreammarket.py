@@ -190,7 +190,7 @@ class DreammarketSink(object):
 
         return urls
 
-    def perform_login(self, dreammarket_username, dreammarket_password):
+    def perform_login(self, username, password):
         """
         This method accesses the login page of the alphabay market, and
         proceeds to enter credentials and bypass the captcha on the login page.
@@ -201,20 +201,22 @@ class DreammarketSink(object):
 
         self.logger.info("Requesting login page.")
         selenium_driver.get(
-            "{onion_url}/login.php".format(
+            "{onion_url}".format(
                 onion_url=self.onion_url
             )
         )
 
 
-        # This is a special codeblock custom to AB to check if still on login pg
+        # This is a special codeblock custom to DM to check if still on login pg
         while "login" in selenium_driver.title.lower():
             # Enter the username
-            input_element = selenium_driver.find_element_by_name("user")
+            input_element = selenium_driver.find_elements_by_xpath("//input[@value='' and @type='text']")[0]
             input_element.send_keys(username)
             # Enter the password
-            input_element = selenium_driver.find_element_by_name("pass")
+            input_element = selenium_driver.find_elements_by_xpath("//input[@value='' and @type='password']")[0]
             input_element.send_keys(password)
+            raw_input("hello")
+
             # Enter the captcha
             dminer.sinks.helpers.solve_captcha(
                 selenium_driver,
