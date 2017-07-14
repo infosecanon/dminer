@@ -189,6 +189,12 @@ class DreammarketSink(object):
             )
 
         return urls
+    
+    def process_captcha(self, image):
+        """
+        TODO: DOC
+        """
+        return image
 
     def perform_login(self, username, password):
         """
@@ -215,15 +221,16 @@ class DreammarketSink(object):
             # Enter the password
             input_element = selenium_driver.find_elements_by_xpath("//input[@value='' and @type='password']")[0]
             input_element.send_keys(password)
-            raw_input("hello")
 
             # Enter the captcha
             dminer.sinks.helpers.solve_captcha(
                 selenium_driver,
                 self.dbc_client,
-                selenium_driver.find_element_by_id("captcha"),
-                selenium_driver.find_element_by_name("captcha_code")
+                selenium_driver.find_element_by_xpath("//img[@alt='Captcha']"),
+                selenium_driver.find_element_by_xpath("//input[@title='Captcha, case sensitive']"),
+                preprocessor=self.process_captcha
             )
+            raw_input("hello")
             # Submit the form
             with dminer.sinks.helpers.wait_for_page_load(selenium_driver):
                 selenium_driver.find_element_by_name("captcha_code").submit()
