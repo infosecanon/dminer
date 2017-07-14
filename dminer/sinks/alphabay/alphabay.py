@@ -206,6 +206,8 @@ class AlphabaySink(object):
             )
         )
 
+
+        # This is a special codeblock custom to AB to check if still on login pg
         while "login" in selenium_driver.title.lower():
             # Enter the username
             input_element = selenium_driver.find_element_by_name("user")
