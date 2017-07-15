@@ -133,7 +133,7 @@ def solve_captcha(selenium_driver, dbc_instance,
     )
     # Preprocess the image before saving for DBC
     captcha_image = preprocessor(captcha_image)
-    
+
     # Save the captcha to the temp file.
     captcha_image.save(temp_captcha_file.name, "png", quality=90)
 
