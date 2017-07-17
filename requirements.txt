@@ -2,3 +2,5 @@ beautifulsoup4
 elasticsearch
 selenium
 image
+numpy
+opencv-python

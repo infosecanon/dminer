@@ -10,6 +10,8 @@ import requests
 import random
 import copy
 import urllib
+import numpy
+import cv2
 
 from datetime import datetime
 from bs4 import BeautifulSoup
@@ -77,7 +79,7 @@ class DreammarketSink(object):
         self.logger.info("Fetching index for categories.")
         # We request the homepage so that we can get the top-level FRC ids.
         home_page, request_success = self.perform_request(
-            "{onion_url}/index.php".format(
+            "{onion_url}/".format(
                 onion_url=self.onion_url
             )
         )
@@ -112,88 +114,56 @@ class DreammarketSink(object):
         # We pull the categories so that we can fetch the start/stop page URLS
         categories = self.get_categories()
 
-        # Try to pull the category name from our category mapping, if it exists
-        try:
-            category_url = categories[self.category]
-        except KeyError:
-            raise Exception("The specified market category was not found.")
-
-        category_page, request_success = self.perform_request(category_url)
-        if not request_success:
-            raise Exception(
-                "Unable to request the category page ({category})".format(
-                    category=self.category
-                )
-            )
-
-        self.logger.info(
-            "Parsing category page ({category}) for page URLS.".format(
-                category=self.category
-            )
-        )
-        parsed_category_page = BeautifulSoup(
-            category_page.text.encode("UTF-8"), "html.parser"
-        )
-
-        # Find the last page button based on the last.png img tag's parent
-        # element.
-        last_page_button_img = parsed_category_page.find(
-            "img",
-            {
-                "class": "std",
-                "src": "images/last.png"
-            }
-        )
-        if not last_page_button_img:
-            raise Exception(
-                "Unable to identify the last page image element."
-            )
-
-        # If the element exists, grab the parent element, since the parent is
-        # what contains the relative path with the query parameters we are
-        # looking for
-        last_page_button_parent = last_page_button_img.parent
-        if not last_page_button_parent:
-            raise Exception(
-                "Unable to identify the last page image element parent."
-            )
-
-        last_page_url = "{onion_url}/{last_page}".format(
-            onion_url=self.onion_url,
-            last_page=last_page_button_parent["href"]
-        )
-
-        last_page_url, last_page_params = dminer.sinks.helpers.parse_url(
-            last_page_url
-        )
-        # Build the last page number so that we can iterate & build the pages
-        # up to it
-        last_page_number = int("".join(last_page_params["pg"]))
-
-        for page_num in range(1, last_page_number + 1):
-            page_params = copy.deepcopy(last_page_params)
-            page_params["pg"] = [str(page_num)]
-            # Flatten the parameters
-            page_params = dict(
-                (k, v[0]) for k, v in page_params.iteritems()
-            )
-            # Append the built URL
-            urls.append(
-                "{onion_url}{page_path}".format(
-                    onion_url=self.onion_url,
-                    page_path="{path}?{params}".format(
-                        path=last_page_url.path,
-                        params=urllib.urlencode(page_params)
-                    )
-                )
-            )
-
         return urls
     
     def process_captcha(self, image):
         """
         TODO: DOC
         """
+        cv2_img = cv2.cvtColor(numpy.array(image), cv2.COLOR_BGR2GRAY)
+
+        # Find the threshold of the image so that we can identify contours.
+        ret, thresh = cv2.threshold(
+            cv2_img,
+            127,
+            255,
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C
+        )
+        # Find the contours of the image
+        _, contours, hierarchy = cv2.findContours(
+            thresh,
+            cv2.RETR_TREE,
+            cv2.CHAIN_APPROX_NONE
+        )
+
+        # Find the largest contour in the image with 4 points. This is the
+        # rectangle that is required to crop to for the captcha.
+        largest_contour = None
+        for contour in contours:
+            if (len(cv2.approxPolyDP(contour, 0.05*cv2.arcLength(contour, True), True)) == 4) and (2500 < cv2.contourArea(contour) < 4000):
+                if isinstance(largest_contour, type(None)):
+                    largest_contour = contour
+                    continue
+                if cv2.contourArea(contour) > cv2.contourArea(largest_contour):
+                    largest_contour = contour
+
+        # If we don't have a matching contour, don't try to crop and such
+        if isinstance(largest_contour, type(None)):
+            return None
+        # If we do have a matching contour, build the rectangle
+        crop_x, crop_y, crop_width, crop_height = cv2.boundingRect(
+            largest_contour
+        )
+        # Crop down to the contour rectangle
+        image = image.crop(
+            (
+                crop_x,
+                crop_y,
+                crop_x + crop_width,
+                crop_y + crop_height
+            )
+        )
+        image.save("temp.png", "png", quality=90)
         return image
 
     def perform_login(self, username, password):
@@ -206,42 +176,52 @@ class DreammarketSink(object):
         selenium_driver = dminer.sinks.helpers.launch_selenium_driver()
 
         self.logger.info("Requesting login page.")
-        selenium_driver.get(
-            "{onion_url}".format(
-                onion_url=self.onion_url
+        with dminer.sinks.helpers.wait_for_page_load(selenium_driver):
+            selenium_driver.get(
+                "{onion_url}".format(
+                    onion_url=self.onion_url
+                )
             )
-        )
-
 
         # This is a special codeblock custom to DM to check if still on login pg
         while "login" in selenium_driver.title.lower():
-            # Enter the username
-            input_element = selenium_driver.find_elements_by_xpath("//input[@value='' and @type='text']")[0]
-            input_element.send_keys(username)
-            # Enter the password
-            input_element = selenium_driver.find_elements_by_xpath("//input[@value='' and @type='password']")[0]
-            input_element.send_keys(password)
-
-            # Enter the captcha
-            dminer.sinks.helpers.solve_captcha(
+            with dminer.sinks.helpers.wait_for_page_load(selenium_driver):
+                selenium_driver.get(
+                    "{onion_url}".format(
+                        onion_url=self.onion_url
+                    )
+                )
+            captcha_text = dminer.sinks.helpers.solve_captcha(
                 selenium_driver,
                 self.dbc_client,
                 selenium_driver.find_element_by_xpath("//img[@alt='Captcha']"),
-                selenium_driver.find_element_by_xpath("//input[@title='Captcha, case sensitive']"),
                 preprocessor=self.process_captcha
             )
-            raw_input("hello")
-            # Submit the form
-            with dminer.sinks.helpers.wait_for_page_load(selenium_driver):
-                selenium_driver.find_element_by_name("captcha_code").submit()
+            if captcha_text:
+                print "attempting captcha"
+                # Enter the captcha
+                selenium_driver.find_element_by_xpath(
+                    "//input[@title='Captcha, case sensitive']"
+                ).send_keys(captcha_text)
+                # Enter the username
+                input_element = selenium_driver.find_elements_by_xpath(
+                    "//input[@value='' or @value='%s' and @type='text']" % username
+                )[0]
+                input_element.send_keys(username)
+                # Enter the password
+                input_element = selenium_driver.find_elements_by_xpath("//input[@value='' and @type='password']")[0]
+                input_element.send_keys(password)
+                with dminer.sinks.helpers.wait_for_page_load(selenium_driver):
+                    # Submit the form
+                    selenium_driver.find_element_by_xpath("//input[@value='Login']").click()
+            else:
+                continue
 
         # Go to the root and wait for the page to load so we can force the
         # session to stabilize
         self.logger.info("Stabilizing session.")
         with dminer.sinks.helpers.wait_for_page_load(selenium_driver):
-            selenium_driver.get(
-                "{onion_url}/index.php".format(onion_url=self.onion_url)
-            )
+            selenium_driver.get(self.onion_url)
         # Move into a headless session, since we bypassed DDOS/Login
         self.convert_headless(selenium_driver)
 
@@ -387,17 +367,6 @@ class DreammarketSink(object):
                     self.perform_ddos_prevention(
                         self.dreammarket_username, self.dreammarket_password
                     )
-                # If it's neither the DDOS prevention page or the login page,
-                # we know it's the index page, and that we need to try again
-                # (if we have enough retry attempts left).
-                elif "index" in response.headers["Location"].lower():
-                    self.logger.error(
-                        "Redirection from {original_url} to {redirect_url}".format(
-                            original_url=url,
-                            redirect_url=response.headers["Location"]
-                        )
-                    )
-                    retry_attempts -= 1
                 # We fail hard if we don't know where we are being redirected
                 # to, since this is not an expected condition.
                 else:
@@ -422,7 +391,10 @@ class DreammarketSink(object):
         # Get past DDOS protection and log in.
         self.logger.info("Attempting to log in.")
         # Get an Alphabay session through selenium due to the captcha
-        self.perform_login(self.dreammarket_username, self.dreammarket_password)
+        self.perform_login(
+            self.dreammarket_username,
+            self.dreammarket_password
+        )
 
         while True:
             # If we are getting urls from a file, grab them now, otherwise,

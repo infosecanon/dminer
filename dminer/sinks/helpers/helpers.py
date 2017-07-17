@@ -95,9 +95,8 @@ def wait_for_page_load(driver, timeout=30):
     )
 
 
-def solve_captcha(selenium_driver, dbc_instance, 
-                  image_element, entry_element,
-                  preprocessor=lambda image: image):
+def solve_captcha(selenium_driver, dbc_instance,
+                  image_element, preprocessor=lambda image: image):
     """
     This method alows for the solving of captchas. By providing the image
     element and entry element, this method will screenshot the page, crop
@@ -134,17 +133,25 @@ def solve_captcha(selenium_driver, dbc_instance,
     # Preprocess the image before saving for DBC
     captcha_image = preprocessor(captcha_image)
 
+    # We don't do anything further if the preprocessor returns None
+    if not captcha_image:
+        return None
+
     # Save the captcha to the temp file.
     captcha_image.save(temp_captcha_file.name, "png", quality=90)
 
     # Attempt to solve the captcha
-    captcha_result = dbc_instance.decode(temp_captcha_file.name, 200)
-
+    try:
+        captcha_result = dbc_instance.decode(temp_captcha_file.name, 200)
+    except ValueError:
+        # Will close handle and delete file
+        temp_captcha_file.close()
+        return None
     # Will close handle and delete file
     temp_captcha_file.close()
 
     # Pull the captcha text for entry and enter them
-    entry_element.send_keys(captcha_result["text"])
+    return captcha_result["text"]
 
 
 def save_file(directory, file_name, file_contents):
