@@ -185,6 +185,7 @@ def entry(arguments):
     logic around the usage of command line arguments and the dreammarket sink in
     order to perform scraping, ingestion, and storage related functions.
     """
+    logger.setLevel(arguments.verbosity.upper())
     if not arguments.dreammarket_username:
         logger.error("This sink requires a username to be specified through CLI or enviornment variable.")
         raise SystemExit()

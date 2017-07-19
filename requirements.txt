@@ -4,3 +4,4 @@ selenium
 image
 numpy
 opencv-python
+requests[socks]

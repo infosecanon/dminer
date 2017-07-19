@@ -68,41 +68,57 @@ class DreammarketSink(object):
         # Set the category to scrape
         self.category = category
 
-    def get_categories(self):
+    def get_categories(self, categories, path, depth, scope=""):
         """
         This method returns a mapping of category names to category URL's.
         It is built by requesting the index page of the market, and parsing
-        the HTML to extract categories for scraping.
+        the HTML to extract all of the categories and build a dictionary
+        mapping of category hierarchy to category URL.
         """
-        categories = {}
-
-        self.logger.info("Fetching index for categories.")
-        # We request the homepage so that we can get the top-level FRC ids.
-        home_page, request_success = self.perform_request(
-            "{onion_url}/".format(
-                onion_url=self.onion_url
+        self.logger.info(
+            "Getting categories from {path} by depth {depth} under scope {scope}".format(
+                path=path,
+                depth=depth,
+                scope=scope
             )
         )
-
+        # We request the homepage so that we can get the top-level FRC ids.
+        page, request_success = self.perform_request(
+            "{onion_url}{path}".format(
+                onion_url=self.onion_url,
+                path=path
+            )
+        )
         if not request_success:
             raise Exception(
-                "Unable to request the index page to fetch categories."
+                "Unable to request the {path} route to fetch categories.".format(
+                    path=path
+                )
             )
-        parsed_home = BeautifulSoup(
-            home_page.text.encode("UTF-8"), "html.parser"
+        # Parse the page and yield the categories for this level
+        parsed_page = BeautifulSoup(
+            page.text.encode("UTF-8"), "html.parser"
         )
-
-        self.logger.info("Parsing index for category URLS.")
-        # Iterate through the FRC ids to build the mapping between category
-        # text names and urls.
-        for category_link_element in parsed_home.find_all("a", class_="category"):
-            category_name = category_link_element.text.lower().strip()
-            category_url = "{onion_url}/{category_url}".format(
-                onion_url=self.onion_url,
-                category_url=category_link_element["href"]
+        for category_element in parsed_page.find_all("div", class_="depth%s" % str(depth)):
+            # Remove whitespace and replace spaces with underscores
+            clean_category = "_".join(category_element.text.strip().split()[:-1]).lower()
+            category = "{scope}{category}".format(
+                scope="%s." % scope if not scope == "" else scope,
+                category=clean_category
             )
-            categories[category_name] = category_url
-        return categories
+            categories[category] = category_element.find("a")["href"].split("=")[-1]
+            self.logger.info(
+                "Fetching subcategories of {category}".format(
+                    category=category
+                )
+            )
+            # Find all categories under this category
+            self.get_categories(
+                categories,
+                "?category=%s" % str(categories[category]),
+                depth + 1,
+                scope=category
+            )
 
     def get_dynamic_urls(self):
         """
@@ -112,10 +128,12 @@ class DreammarketSink(object):
         urls = []
 
         # We pull the categories so that we can fetch the start/stop page URLS
-        categories = self.get_categories()
+        category_dict = {}
+        categories = self.get_categories(category_dict, "/", 0)
+        print category_dict
 
         return urls
-    
+
     def process_captcha(self, image):
         """
         TODO: DOC
@@ -132,24 +150,24 @@ class DreammarketSink(object):
         # Find the contours of the image
         _, contours, hierarchy = cv2.findContours(
             thresh,
-            cv2.RETR_TREE,
-            cv2.CHAIN_APPROX_NONE
+            cv2.RETR_EXTERNAL,
+            cv2.CHAIN_APPROX_SIMPLE
         )
 
         # Find the largest contour in the image with 4 points. This is the
         # rectangle that is required to crop to for the captcha.
         largest_contour = None
         for contour in contours:
-            if (len(cv2.approxPolyDP(contour, 0.05*cv2.arcLength(contour, True), True)) == 4) and (2500 < cv2.contourArea(contour) < 4000):
+            if (len(cv2.approxPolyDP(contour, 0.1*cv2.arcLength(contour, True), True)) == 4) and (2500 < cv2.contourArea(contour) < 4000):
                 if isinstance(largest_contour, type(None)):
                     largest_contour = contour
                     continue
                 if cv2.contourArea(contour) > cv2.contourArea(largest_contour):
                     largest_contour = contour
-
         # If we don't have a matching contour, don't try to crop and such
         if isinstance(largest_contour, type(None)):
             return None
+
         # If we do have a matching contour, build the rectangle
         crop_x, crop_y, crop_width, crop_height = cv2.boundingRect(
             largest_contour
@@ -163,7 +181,6 @@ class DreammarketSink(object):
                 crop_y + crop_height
             )
         )
-        image.save("temp.png", "png", quality=90)
         return image
 
     def perform_login(self, username, password):
@@ -194,11 +211,17 @@ class DreammarketSink(object):
             captcha_text = dminer.sinks.helpers.solve_captcha(
                 selenium_driver,
                 self.dbc_client,
-                selenium_driver.find_element_by_xpath("//img[@alt='Captcha']"),
+                selenium_driver.find_element_by_xpath(
+                    "//img[@alt='Captcha']"
+                ),
                 preprocessor=self.process_captcha
             )
             if captcha_text:
-                print "attempting captcha"
+                self.logger.info(
+                    "Attempting captcha solution with text: {captcha_text}".format(
+                        captcha_text=captcha_text
+                    )
+                )
                 # Enter the captcha
                 selenium_driver.find_element_by_xpath(
                     "//input[@title='Captcha, case sensitive']"
@@ -209,13 +232,19 @@ class DreammarketSink(object):
                 )[0]
                 input_element.send_keys(username)
                 # Enter the password
-                input_element = selenium_driver.find_elements_by_xpath("//input[@value='' and @type='password']")[0]
+                input_element = selenium_driver.find_elements_by_xpath(
+                    "//input[@value='' and @type='password']"
+                )[0]
                 input_element.send_keys(password)
                 with dminer.sinks.helpers.wait_for_page_load(selenium_driver):
                     # Submit the form
-                    selenium_driver.find_element_by_xpath("//input[@value='Login']").click()
+                    selenium_driver.find_element_by_xpath(
+                        "//input[@value='Login']"
+                    ).click()
             else:
-                continue
+                self.logger.warn(
+                    "Rerolling page to get new captcha."
+                )
 
         # Go to the root and wait for the page to load so we can force the
         # session to stabilize
@@ -224,42 +253,6 @@ class DreammarketSink(object):
             selenium_driver.get(self.onion_url)
         # Move into a headless session, since we bypassed DDOS/Login
         self.convert_headless(selenium_driver)
-
-    def perform_ddos_prevention(self, dreammarket_username, dreammarket_password):
-        """
-        This method allows for the bypassing of the ddos protection page. It
-        will continue attempting to bypass it until it succeeds.
-        """
-        self.logger.info("Performing DDOS prevention.")
-        while True:
-            if "ddos" in self.selenium_driver.title.lower():
-                # Enter the username
-                input_element = self.selenium_driver.find_element_by_name("user")
-                input_element.send_keys(dm_username)
-                # Enter the password
-                input_element = self.selenium_driver.find_element_by_name("pass")
-                input_element.send_keys(dm_password)
-                # Enter the captcha
-                dminer.sinks.helpers.solve_captcha(
-                    self.selenium_driver,
-                    self.dbc_client,
-                    self.selenium_driver.find_element_by_id("captcha"),
-                    self.selenium_driver.find_element_by_name("captcha_code")
-                )
-                with dminer.sinks.helpers.wait_for_page_load(self.selenium_driver):
-                    # Submit the form
-                    self.selenium_driver.find_element_by_name("captcha_code").submit()
-            else:
-                break
-        # Go to the root and wait for the page to load so we can force the
-        # session to stabilize
-        self.logger.info("Stabilizing session.")
-        with dminer.sinks.helpers.wait_for_page_load(selenium_driver):
-            selenium_driver.get(
-                "{onion_url}/index.php".format(onion_url=self.onion_url)
-            )
-        # Move into a headless session, since we bypassed DDOS/Login
-        self.convert_headless(selenium_driver, self.requests_session)
 
     def convert_headless(self, selenium_driver):
         """
@@ -359,12 +352,6 @@ class DreammarketSink(object):
                 # reauthenticate.
                 if "login" in response.headers["Location"].lower():
                     self.perform_login(
-                        self.dreammarket_username, self.dreammarket_password
-                    )
-                # If we were being redirected to the DDOS prevention page,
-                # we will perform the ddos prevention.
-                elif "ddos" in response.headers["Location"].lower():
-                    self.perform_ddos_prevention(
                         self.dreammarket_username, self.dreammarket_password
                     )
                 # We fail hard if we don't know where we are being redirected
