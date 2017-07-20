@@ -7,6 +7,7 @@ import logging
 from elasticsearch import Elasticsearch
 from dminer.stores.configuration.alphabay.elasticsearch import AlphabayElasticsearchConfiguration
 from dminer.stores.configuration.dreammarket.elasticsearch import DreammarketElasticsearchConfiguration
+from dminer.stores.configuration.hansa.elasticsearch import HansaElasticsearchConfiguration
 
 class MasterElasticsearchConfiguration(object):
     """
@@ -17,16 +18,17 @@ class MasterElasticsearchConfiguration(object):
     def __init__(self, host="localhost", port=9200):
         self.config_drivers = [
             AlphabayElasticsearchConfiguration(host=host, port=port),
-            DreammarketElasticsearchConfiguration(host=host, port=port)
+            DreammarketElasticsearchConfiguration(host=host, port=port),
+            HansaElasticsearchConfiguration(host=host, port=port)
         ]
         # Set current logger
         self.logger = logging.getLogger(__name__)
-        
+
         # Patch driver loggers so that they are in this configuration's
         # namespace.
         for driver in self.config_drivers:
             driver.logger = self.logger
-    
+
     def create(self):
         """
         Calls all of the create methods for each of the congiguration modules.
@@ -40,7 +42,7 @@ class MasterElasticsearchConfiguration(object):
         """
         for driver in self.config_drivers:
             driver.destroy()
-    
+
     def info(self):
         """
         Calls all of the info methods for each of the configuration modules.

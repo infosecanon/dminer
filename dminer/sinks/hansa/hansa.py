@@ -14,6 +14,8 @@ from bs4 import BeautifulSoup
 
 import dminer.sinks.helpers
 
+from dminer.lib import deathbycaptcha
+
 
 class HansaSink(object):
     """
@@ -34,6 +36,11 @@ class HansaSink(object):
 
         # Set the onion url to scrape from
         self.onion_url = onion_url
+
+        # Bootstrap deathbycaptcha client with supplied credentials
+        self.dbc_client = deathbycaptcha.SocketClient(
+            dbc_access_key, dbc_secret_key
+        )
 
         # Set the category to scrape from
         self.category = category
@@ -241,15 +248,15 @@ class HansaSink(object):
         captcha_entry = captcha_form.find_element_by_id("sec")
 
         # Solve the captcha using the elements we have isolated from the form.
-        dminer.sinks.helpers.solve_captcha(
-            selenium_driver,
+        captcha_text = dminer.sinks.helpers.solve_captcha(
+            selenium,
             self.dbc_client,
-            captcha_image,
-            captcha_entry
+            captcha_image
         )
+        captcha_entry.send_keys(captcha_text)
 
-        with dminer.sinks.helpers.wait_for_page_load(selenium_driver):
-            captcha_form.find_element_by_tag_name("button").submit()
+        with dminer.sinks.helpers.wait_for_page_load(selenium):
+            selenium.find_element_by_tag_name("button").click()
 
         # Move into a headless session and close the selenium driver
         self.convert_headless(selenium)

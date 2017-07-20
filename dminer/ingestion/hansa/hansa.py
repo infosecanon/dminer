@@ -60,7 +60,7 @@ class HansaParser(BaseParser):
         """
         # Each of the listings has it's own container with all relevant
         # information (row-item class tagged div elements).
-        listing_containers = bs_obj.find_all("div", class="row-item")
+        listing_containers = bs_obj.find_all("div", class_="row-item")
 
         for listing_container in listing_containers:
             # Define the item for this listing
@@ -88,7 +88,7 @@ class HansaParser(BaseParser):
 
             # Parse the listing pricing details
             item["listing_price_usd"] = float(
-                listing_price_container.find("strong").text.split(" ")[1]
+                listing_price_container.find("strong").text.split(" ")[1].replace(",", "")
             )
             item["listing_price_btc"] = float(
                 listing_price_container.find("span", class_="text-muted").text
@@ -103,17 +103,20 @@ class HansaParser(BaseParser):
                 ).text.lstrip("+")
             )
             item["vendor_negative_reviews"] = int(
+                # We have to pull it out of REPR because of broken unicode
                 user_details_container.find(
                     "strong", class_="fb-neg"
-                ).text.lstrip("-")
+                ).string.replace(u'\N{MINUS SIGN}', '')
             )
 
             item["vendor_level"] = int(
                 user_details_container.find(
-                    "span", class_="label-success"
-                ).text.split(" ")[1]
+                    "span", class_="label"
+                ).text.strip().split(" ")[1].replace(",", "")
             )
-            
+
+            item["timestamp"] = timestamp
+            print item
             # Yield the item as an entry
             yield item
 

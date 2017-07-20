@@ -53,6 +53,12 @@ class HansaElasticsearchConfiguration(object):
             "mappings": {
                 "hansa_listing":{
                     "properties": {
+                        "vendor_positive_reviews": {
+                            "type": "integer"
+                        },
+                        "vendor_negative_reviews": {
+                            "type": "integer"
+                        },
                         "listing_price_btc": {
                             "type": "double"
                         },
