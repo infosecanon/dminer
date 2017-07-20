@@ -5,6 +5,9 @@ through an ingestionion point, and save it in a datastore.
 """
 import os
 import logging
+
+from pyvirtualdisplay import Display
+
 from dminer.ingestion.dreammarket import DreammarketParser
 from dminer.stores.interfaces import ElasticsearchInterface, STDOutInterface
 from dreammarket import *
@@ -200,6 +203,9 @@ def entry(arguments):
         logger.error("This sink requires a deathbycaptcha secret key to be specified through CLI or environment variable.")
         raise SystemExit()
 
+
+    display = Display(visible=0, size=(1366, 768))
+    display.start()
     sink = DreammarketSink(
         arguments.dreammarket_username, arguments.dreammarket_password,
         arguments.dbc_access_key, arguments.dbc_secret_key,
@@ -234,3 +240,4 @@ def entry(arguments):
             )
     else:
         list(sink.scrape())
+    display.stop()

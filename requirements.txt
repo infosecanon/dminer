@@ -5,3 +5,4 @@ image
 numpy
 opencv-python
 requests[socks]
+pyvirtualdisplay
