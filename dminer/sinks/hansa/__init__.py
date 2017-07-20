@@ -1,43 +1,30 @@
 """
-The dreammarket sink module provides the ability to scrape raw data (HTML) from
-the onion site that is hosting it, then (if specified) save it to disk, send it
-through an ingestionion point, and save it in a datastore.
+TODO: DOC
 """
 import os
 import logging
 
-from pyvirtualdisplay import Display
 
-from dminer.ingestion.dreammarket import DreammarketParser
+from dminer.ingestion.hansa import HansaParser
 from dminer.stores.interfaces import ElasticsearchInterface, STDOutInterface
-from dreammarket import *
+from hansa import *
 
 logger = logging.getLogger(__name__)
 
 
 def prepare_cli(parser):
     """
-    Prepares the CLI subgroup parser by adding arguments specific to the
-    dreammarket sink. It also sets the entry point for the CLI to use when
-    specifying this subgroup.
+    TODO: DOC
     """
-    # Sink related arguments
     parser.add_argument(
-        "-u", "--dreammarket-username",
-        default=os.environ.get("DMINER_SINK_DREAMMARKET_USERNAME", None),
+        "--onion-url",
+        default=os.environ.get(
+            "DMINER_SINK_HANSA_ONION_URL", "http://hansamkt2rr6nfg3.onion"
+        ),
         help="""
-        Specifies the username to use for the login form on Dream Market. It is
-        also able to be specified as an environment variable: DMINER_SINK_DREAMMARKET_USERNAME.
-        This is required for this sink module.
-        """
-    )
-    parser.add_argument(
-        "-p", "--dreammarket-password",
-        default=os.environ.get("DMINER_SINK_DREAMMARKET_PASSWORD", None),
-        help="""
-        Specifies the password to use for the login form on Dream Market. It is
-        also able to be specified as an environment variable: DMINER_SINK_DREAMMARKET_PASSWORD.
-        This is a required for this sink module.
+        Specifies the onion URL to use for this marketplace. It is also able to
+        be specified as an environment variable: DMINER_SINK_HANSA_ONION_URL.
+        This is required for this sink module. The default is: %(default)s.
         """
     )
     parser.add_argument(
@@ -58,17 +45,6 @@ def prepare_cli(parser):
         This is required for this sink module.
         """
     )
-    parser.add_argument(
-        "--onion-url",
-        default=os.environ.get(
-            "DMINER_SINK_DREAMMARKET_ONION_URL", "http://lchudifyeqm4ldjj.onion"
-        ),
-        help="""
-        Specifies the onion URL to use for this marketplace. It is also able to
-        be specified as an environment variable: DMINER_SINK_DREAMMARKET_ONION_URL.
-        This is required for this sink module. The default is: %(default)s.
-        """
-    )
 
     url_category_exclusive_group = parser.add_mutually_exclusive_group()
     url_category_exclusive_group.add_argument(
@@ -82,7 +58,7 @@ def prepare_cli(parser):
     )
     url_category_exclusive_group.add_argument(
         "--category",
-        default="digital_goods.hacking",
+        default="security & hosting",
         help="""
         Specifies the category to pull URLS from for consumption by the
         scraper. If specified, URL's will be pulled dynamically, and the
@@ -184,34 +160,15 @@ def prepare_cli(parser):
 
 def entry(arguments):
     """
-    The entry point for the dreammarket sink CLI interface. This defines the
-    logic around the usage of command line arguments and the dreammarket sink in
-    order to perform scraping, ingestion, and storage related functions.
+    TODO: DOC
     """
     logger.setLevel(arguments.verbosity.upper())
-    if not arguments.dreammarket_username:
-        logger.error("This sink requires a username to be specified through CLI or enviornment variable.")
-        raise SystemExit()
-    if not arguments.dreammarket_password:
-        logger.error("This sink requires a password to be specified through CLI or environment variable.")
-        raise SystemExit()
 
-    if not arguments.dbc_access_key:
-        logger.error("This sink requires a deathbycaptcha access key to be specified through CLI or environment variable.")
-        raise SystemExit()
-    if not arguments.dbc_secret_key:
-        logger.error("This sink requires a deathbycaptcha secret key to be specified through CLI or environment variable.")
-        raise SystemExit()
-
-
-    display = Display(visible=0, size=(1366, 768))
-    display.start()
-    sink = DreammarketSink(
-        arguments.dreammarket_username, arguments.dreammarket_password,
+    sink = HansaSink(
         arguments.dbc_access_key, arguments.dbc_secret_key,
+        onion_url=arguments.onion_url,
         url_file=arguments.url_file,
         save_to_directory=arguments.save_to_directory,
-        onion_url=arguments.onion_url,
         request_interval=arguments.request_interval,
         request_retries=arguments.request_retries,
         request_timeout=arguments.request_timeout,
@@ -223,21 +180,19 @@ def entry(arguments):
         if arguments.datastore == "stdout":
             store = STDOutInterface()
 
-            parser = DreammarketParser(datastore=store)
+            parser = HansaParser(datastore=store)
             parser.parse(scrape_results=sink.scrape())
-
         elif arguments.datastore == "elasticsearch":
             store = ElasticsearchInterface(
                 host=arguments.datastore_host,
                 port=arguments.datastore_port
             )
 
-            parser = DreammarketParser(datastore=store)
+            parser = HansaParser(datastore=store)
             parser.parse(
                 scrape_results=sink.scrape(
                     daemon=arguments.daemonize
                 )
             )
     else:
-        list(sink.scrape())
-    display.stop()
+        list(sink.scrape(daemon=sink))
