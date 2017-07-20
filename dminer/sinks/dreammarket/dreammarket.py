@@ -30,7 +30,7 @@ class DreammarketSink(object):
                  url_file=None, save_to_directory=None,
                  onion_url="http://lchudifyeqm4ldjj.onion",
                  request_interval=15, request_retries=5,
-                 request_timeout=5, category="security & hosting"):
+                 request_timeout=5, category="digital_goods.hacking"):
 
         # Set DreamMarket credentials for login
         self.dreammarket_username = dreammarket_username
@@ -82,7 +82,6 @@ class DreammarketSink(object):
                 scope=scope
             )
         )
-        # We request the homepage so that we can get the top-level FRC ids.
         page, request_success = self.perform_request(
             "{onion_url}{path}".format(
                 onion_url=self.onion_url,
@@ -128,10 +127,51 @@ class DreammarketSink(object):
         urls = []
 
         # We pull the categories so that we can fetch the start/stop page URLS
-        category_dict = {}
-        categories = self.get_categories(category_dict, "/", 0)
-        print category_dict
+        category_lookup = {}
+        self.get_categories(category_lookup, "/", 0)
 
+        if self.category not in category_lookup:
+            self.logger.error(
+                "Cateogory: {category} was not found.".format(
+                    category=self.category
+                )
+            )
+
+        self.logger.info(
+            "Requesting base {category} page to build scrape URLS.".format(
+                category=self.category
+            )
+        )
+        base_category_page, request_success = self.perform_request(
+            "{onion_url}/?category={category_id}".format(
+                onion_url=self.onion_url,
+                category_id=category_lookup[self.category]
+            )
+        )
+        if not request_success:
+            raise Exception(
+                "Unable to request the {path} route.".format(
+                    path=path
+                )
+            )
+        parsed_base_category_page = BeautifulSoup(
+            base_category_page.text.encode("UTF-8"), "html.parser"
+        )
+        # Find the last page of the category.
+        last_category_page_number = int(
+            parsed_base_category_page.find_all(
+                "a",
+                class_="pager"
+            )[-1].text.strip()
+        )
+        for page_num in range(1, last_category_page_number + 1):
+            urls.append(
+                "{onion_url}/?page={page_num}&category={category}".format(
+                    onion_url=self.onion_url,
+                    page_num=page_num,
+                    category=category_lookup[self.category]
+                )
+            )
         return urls
 
     def process_captcha(self, image):

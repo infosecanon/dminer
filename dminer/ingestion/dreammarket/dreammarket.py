@@ -19,22 +19,32 @@ class DreammarketParser(object):
     """
     def __init__(self, datastore=None):
         self.datastore = datastore
+        self.datastore_name = datastore.__class__.__name__.lower()
         self.logger = logging.getLogger(__name__)
+
+    def store_elasticsearch(self, item):
+        """
+        Stores the given item in the elasticsearch database specified by
+        the datastore.
+        """
+        self.datastore.create(
+            index="dminer-dreammarket-{date}".format(
+                date=datetime.datetime.strptime(item["timestamp"], "%Y:%m:%d %H:%M:%S").date().strftime("%Y-%m-%d")
+            ),
+            doc_type= "dreammarket_listing",
+            body=item
+        )
 
     def store(self, item):
         """
-        Stores a given item to the datastore. If the datastore is none, an
-        error will be raised  (`dminer.ingestion.base.exceptions.DataStoreNotSpecifiedError`).
+        Stores a given item to the datastore. If the datastore is None, an error
+        will be raised (`dminer.ingestion.base.exceptions.DataStoreNotSpecifiedError`).
         """
         if isinstance(self.datastore, type(None)):
             raise DataStoreNotSpecifiedError("A datastore must be present in order to store a parsed result.")
 
-        self.datastore.create(
-            document=item,
-            type="dreammarket_listing",
-            parser="dreammarket",
-            date=datetime.datetime.strptime(item["timestamp"], "%Y:%m:%d %H:%M:%S").date().strftime("%Y-%m-%d")
-        )
+        if self.datastore_name == "elasticsearchinterface":
+            self.store_elasticsearch(item)
 
     def extract_listings(self, soup, timestamp):
         """
@@ -115,7 +125,7 @@ class DreammarketParser(object):
 
         elif scrape_results:
             for html_obj in scrape_results:
-                soup = BeautifulSoup(hmtl_obj, 'html.parser')
+                soup = BeautifulSoup(html_obj, 'html.parser')
                 timestamp = datetime.datetime.now().strftime("%Y:%m:%d %H:%M:%S")
                 for listing in self.extract_listings(soup, timestamp):
                     self.store(listing)

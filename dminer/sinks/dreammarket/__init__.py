@@ -79,7 +79,7 @@ def prepare_cli(parser):
     )
     url_category_exclusive_group.add_argument(
         "--category",
-        default="security & hosting",
+        default="digital_goods.hacking",
         help="""
         Specifies the category to pull URLS from for consumption by the
         scraper. If specified, URL's will be pulled dynamically, and the
