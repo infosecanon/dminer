@@ -116,7 +116,6 @@ class HansaParser(BaseParser):
             )
 
             item["timestamp"] = timestamp
-            print item
             # Yield the item as an entry
             yield item
 
