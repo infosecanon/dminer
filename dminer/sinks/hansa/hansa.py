@@ -237,7 +237,28 @@ class HansaSink(object):
         selenium = dminer.sinks.helpers.launch_selenium_driver()
         # Fetch the challenge page so we can update our session with the
         # cookie that allows us to escape the challenge sandbox.
-        selenium.get("{onion_url}/challenge/".format(onion_url=self.onion_url))
+        # We have the potential of requesting it multiple times based on the
+        # results of DBC. This assists us with error handling.
+        while True:
+            selenium.get(
+                "{onion_url}/challenge/".format(
+                    onion_url=self.onion_url
+                )
+            )
+            # Solve the captcha using the elements we have isolated from the form.
+            for attempt in range(10):
+                try:
+                    captcha_text = dminer.sinks.helpers.solve_captcha(
+                        selenium,
+                        self.dbc_client,
+                        captcha_image
+                    )
+                    break
+                except:
+                    captcha_text = None
+            # We successfully completed the captcha, go ahead and exit
+            if captcha_text:
+                break
 
         # Identify the form so that we can isolate our search.
         captcha_form = selenium.find_element_by_class_name("form-group")
@@ -246,14 +267,9 @@ class HansaSink(object):
         # Identify the text entry within the form (this is where the response
         # is entered).
         captcha_entry = captcha_form.find_element_by_id("sec")
-
-        # Solve the captcha using the elements we have isolated from the form.
-        captcha_text = dminer.sinks.helpers.solve_captcha(
-            selenium,
-            self.dbc_client,
-            captcha_image
-        )
+        # Enter the captcha text
         captcha_entry.send_keys(captcha_text)
+
 
         with dminer.sinks.helpers.wait_for_page_load(selenium):
             selenium.find_element_by_tag_name("button").click()
@@ -295,7 +311,7 @@ class HansaSink(object):
                 )
                 if "challenge" in response.headers["Location"]:
                     self.perform_ddos_prevention()
-                retry_attempts -= 1
+                    retry_attempts -= 1
             else:
                 raise Exception(
                     "Redirection from {original_url} to {redirect_url}".format(

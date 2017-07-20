@@ -363,12 +363,20 @@ class DreammarketSink(object):
         response_success = False
         retry_attempts = self.retry_attempts
         # Pull down the page source into `response.text`
-        self.logger.info("Requesting: %s" % url)
-        while retry_attempts > 0:
+        self.logger.info(
+            "Requesting: {url}".format(
+                url=url
+            )
+        )
+        while True:
             # Sleep for a random amount in between attempts, to prevent looking
             # like a bot.
             sleep_time = random.randrange(0, self.request_interval)
-            self.logger.info("Sleeping thread for %is" % sleep_time)
+            self.logger.info(
+                "Sleeping thread for {sleep_time}s".format(
+                    sleep_time=sleep_time
+                )
+            )
             time.sleep(sleep_time)
             # Perform the request, without following redirects. If we are
             # redirected, then we need to make sure we handle it correctly,
@@ -385,6 +393,11 @@ class DreammarketSink(object):
 
             # If the response status is 200, then we are fine to exit early
             if response.status_code == 200:
+                if "Sorry, an error has occured" in response.text:
+                    self.logger.info("Dreammarket may be down. Continuing to retry.")
+                    # Explicitly continue to the next iteration, as we haven't
+                    # performed the prompted request.
+                    continue
                 return response, True
             # If the response status is 302, then we were being redirected.
             elif response.status_code == 302:
