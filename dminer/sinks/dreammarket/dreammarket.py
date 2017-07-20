@@ -1,181 +1,445 @@
 """
-TODO: DOC
+The dreammarket sink module provides functionality for scraping content from the
+alphabay site, as well as passing it to the appropriate ingestion interface,
+and saving scrapes for later processing.
 """
-import urlparse
-import platform
 import time
 import os
+import logging
+import requests
+import random
+import copy
+import urllib
+import numpy
+import cv2
 
 from datetime import datetime
-from PIL import Image
+from bs4 import BeautifulSoup
 
 import dminer.sinks.helpers
 from dminer.lib import deathbycaptcha
 
+
 class DreammarketSink(object):
-	def __init__(self, *args, **kwargs):
-		self.datastore = kwargs.get('datastore', None)
-		self.selenium_driver = helpers.launch_selenium_driver()
+    """
+    The alphabay sink provides functionality for scraping, saving, and
+    ingesting content from the alphabay site.
+    """
+    def __init__(self, dreammarket_username, dreammarket_password,
+                 dbc_access_key, dbc_secret_key,
+                 url_file=None, save_to_directory=None,
+                 onion_url="http://lchudifyeqm4ldjj.onion",
+                 request_interval=15, request_retries=5,
+                 request_timeout=5, category="digital_goods.hacking"):
 
-		self.categories = {
-			"cat136": "ce",
-			"cat135": "c",
-			"cat131": "hs",
-			"cat118": "s",
-			"cat117": "sec",
-			"cat147": "pd",
-			"cat114": "h",
-			"cat108": "d"
-		}
+        # Set DreamMarket credentials for login
+        self.dreammarket_username = dreammarket_username
+        self.dreammarket_password = dreammarket_password
 
-	def save_to_directory(self, directory, file_name, file_contents):
-		if os.path.exists(directory):
-			with open(os.path.join(directory, file_name), "wb") as f_obj:
-				f_obj.write(file_contents)
-		else:
-			raise Exception("Directory was not found.")
+        # Specify the url file to pull urls from
+        self.url_file = url_file
 
-	def get_urls_from_file(self, file_path):
-		urls = []
-		if os.path.exists(file_path):
-			with open(file_path, "r") as f_obj:
-				for line in f_obj:
-					urls.append(line)
-		else:
-			raise Exception("URL file not found.")
+        # Specify the directory to save scrapes to
+        self.save_to_directory = save_to_directory
 
-		return urls
+        # Bootstrap the requests session
+        self.requests_session = requests.Session()
 
-	def bypass_captcha(self, captcha_element, crop_dim):
-		imageName = datetime.now().strftime('%m-%d-%H-%M-%S')
-		# Get the screenshot of the web page so that we can crop to the captcha
-		# TODO: DO I REALLY FUCKING WORK
-		self.selenium_driver.get_screenshot_as_file('temp.png')
-		# Open the screenshot and crop to captcha
-		temp = Image.open("temp.png")
-		#temp = temp.crop( (145,130,305,205) )
-		temp = temp.crop(crop_dim)
+        # Set the interval between requests
+        self.request_interval = request_interval
 
-		# Write the captcha out to disk
-		imagefile = open(str(imageName+"-bypass-captcha.png"), 'wb')
-		try:
-			temp.save(imagefile, "png", quality=90)
-			imagefile.close()
-		except:
-			print "Cannot save user image"
-			raise
-		# Remove the temporary PNG used to get past the captcha
-		os.remove('temp.png')
+        # Set the number of attempts to make on a URL that is being redirected
+        self.retry_attempts = request_retries
 
-		#now for the dbc part, please dont public this login
-		client = deathbycaptcha.SocketClient(os.environ.get("DMINER_DBC_ACCESS_KEY", None), os.environ.get("DMINER_DBC_SECRET_KEY", None))
-		try:
-			#balance = client.get_balance()
+        # Set the request timeout on a URL
+        self.request_timeout = request_timeout
 
-			# Put your CAPTCHA file name or file-like object, and optional
-			# solving timeout (in seconds) here:
-			captcha = client.decode(imageName+"-bypass-captcha.png", 200)
-			if captcha:
-				captchaId = captcha["captcha"]
-				text = captcha["text"]
+        # Bootstrap deathbycaptcha client with supplied credentials
+        self.dbc_client = deathbycaptcha.SocketClient(
+            dbc_access_key, dbc_secret_key
+        )
 
-				#type it in!
-				inputElement = self.selenium_driver.find_element_by_name(captcha_element)
-				inputElement.send_keys(text)
-				time.sleep(10)
-				if "DDoS Protection" in self.selenium_driver.title:
-					print "Reporting bad captcha: " + str(captchaId)
-					client.report(captchaId)
-		except deathbycaptcha.AccessDeniedException:
-			print "Login problems, banned?"
-			raise
+        # Create an instance of logging under the module's namespace
+        self.logger = logging.getLogger(__name__)
 
-	def perform_login(self, username, password):
-		self.selenium_driver.get("http://lchudifyeqm4ldjj.onion/")
+        # The onion url
+        self.onion_url = onion_url
 
-		imageName = datetime.now().strftime('%m-%d-%H-%M-%S')
+        # Set the category to scrape
+        self.category = category
 
-		#---- Known Bug ----#
-		# Once the captcha fails once the captcha box moves down the page
-		# due to the warning, thus DBC doesnt get the correct png to
-		# interpret captcha. Check crop dimensions (crop_dim).
+    def get_categories(self, categories, path, depth, scope=""):
+        """
+        This method returns a mapping of category names to category URL's.
+        It is built by requesting the index page of the market, and parsing
+        the HTML to extract all of the categories and build a dictionary
+        mapping of category hierarchy to category URL.
+        """
+        self.logger.info(
+            "Getting categories from {path} by depth {depth} under scope {scope}".format(
+                path=path,
+                depth=depth,
+                scope=scope
+            )
+        )
+        page, request_success = self.perform_request(
+            "{onion_url}{path}".format(
+                onion_url=self.onion_url,
+                path=path
+            )
+        )
+        if not request_success:
+            raise Exception(
+                "Unable to request the {path} route to fetch categories.".format(
+                    path=path
+                )
+            )
+        # Parse the page and yield the categories for this level
+        parsed_page = BeautifulSoup(
+            page.text.encode("UTF-8"), "html.parser"
+        )
+        for category_element in parsed_page.find_all("div", class_="depth%s" % str(depth)):
+            # Remove whitespace and replace spaces with underscores
+            clean_category = "_".join(category_element.text.strip().split()[:-1]).lower()
+            category = "{scope}{category}".format(
+                scope="%s." % scope if not scope == "" else scope,
+                category=clean_category
+            )
+            categories[category] = category_element.find("a")["href"].split("=")[-1]
+            self.logger.info(
+                "Fetching subcategories of {category}".format(
+                    category=category
+                )
+            )
+            # Find all categories under this category
+            self.get_categories(
+                categories,
+                "?category=%s" % str(categories[category]),
+                depth + 1,
+                scope=category
+            )
 
-		# Determine if the page sent us to the DDoS pg or main pg
-		while "DDoS Protection" in self.selenium_driver.title:
-			crop_dim = (145,130,305,205)
-			self.bypass_captcha("answer", crop_dim)
-			# Submit the form
-			self.selenium_driver.find_element_by_name("answer").submit()
+    def get_dynamic_urls(self):
+        """
+        This method provides URLs to scrape based off of the links scraped off
+        of the page (specifically categories).
+        """
+        urls = []
 
+        # We pull the categories so that we can fetch the start/stop page URLS
+        category_lookup = {}
+        self.get_categories(category_lookup, "/", 0)
 
-		time.sleep(10)
+        if self.category not in category_lookup:
+            self.logger.error(
+                "Cateogory: {category} was not found.".format(
+                    category=self.category
+                )
+            )
 
-		while "Login" in self.selenium_driver.title:
-			print datetime.now()
-			crop_dim = (250,380,450,450)
+        self.logger.info(
+            "Requesting base {category} page to build scrape URLS.".format(
+                category=self.category
+            )
+        )
+        base_category_page, request_success = self.perform_request(
+            "{onion_url}/?category={category_id}".format(
+                onion_url=self.onion_url,
+                category_id=category_lookup[self.category]
+            )
+        )
+        if not request_success:
+            raise Exception(
+                "Unable to request the {path} route.".format(
+                    path=path
+                )
+            )
+        parsed_base_category_page = BeautifulSoup(
+            base_category_page.text.encode("UTF-8"), "html.parser"
+        )
+        # Find the last page of the category.
+        last_category_page_number = int(
+            parsed_base_category_page.find_all(
+                "a",
+                class_="pager"
+            )[-1].text.strip()
+        )
+        for page_num in range(1, last_category_page_number + 1):
+            urls.append(
+                "{onion_url}/?page={page_num}&category={category}".format(
+                    onion_url=self.onion_url,
+                    page_num=page_num,
+                    category=category_lookup[self.category]
+                )
+            )
+        return urls
 
-			inputElement = self.selenium_driver.find_element_by_name("Username")
-			inputElement.send_keys(username)
+    def process_captcha(self, image):
+        """
+        TODO: DOC
+        """
+        cv2_img = cv2.cvtColor(numpy.array(image), cv2.COLOR_BGR2GRAY)
 
-			inputElement = self.selenium_driver.find_element_by_name("password")
-			inputElement.send_keys(password)
+        # Find the threshold of the image so that we can identify contours.
+        ret, thresh = cv2.threshold(
+            cv2_img,
+            127,
+            255,
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C
+        )
+        # Find the contours of the image
+        _, contours, hierarchy = cv2.findContours(
+            thresh,
+            cv2.RETR_EXTERNAL,
+            cv2.CHAIN_APPROX_SIMPLE
+        )
 
-			self.bypass_captcha("captcha_code", crop_dim)
+        # Find the largest contour in the image with 4 points. This is the
+        # rectangle that is required to crop to for the captcha.
+        largest_contour = None
+        for contour in contours:
+            if (len(cv2.approxPolyDP(contour, 0.1*cv2.arcLength(contour, True), True)) == 4) and (2500 < cv2.contourArea(contour) < 4000):
+                if isinstance(largest_contour, type(None)):
+                    largest_contour = contour
+                    continue
+                if cv2.contourArea(contour) > cv2.contourArea(largest_contour):
+                    largest_contour = contour
+        # If we don't have a matching contour, don't try to crop and such
+        if isinstance(largest_contour, type(None)):
+            return None
 
-			self.selenium_driver.find_element_by_name("captcha_code").submit()
-			time.sleep(5)
-		time.sleep(10)
+        # If we do have a matching contour, build the rectangle
+        crop_x, crop_y, crop_width, crop_height = cv2.boundingRect(
+            largest_contour
+        )
+        # Crop down to the contour rectangle
+        image = image.crop(
+            (
+                crop_x,
+                crop_y,
+                crop_x + crop_width,
+                crop_y + crop_height
+            )
+        )
+        return image
 
-	def scrape(self, username=None, password=None,
-		             from_file=None, save_directory=None,
-		             **kwargs):
+    def perform_login(self, username, password):
+        """
+        This method accesses the login page of the alphabay market, and
+        proceeds to enter credentials and bypass the captcha on the login page.
+        It will perform these actions until the login page is successfully
+        bypassed.
+        """
+        selenium_driver = dminer.sinks.helpers.launch_selenium_driver()
 
-		# Get past DDOS protection and log in.
-		self.perform_login(username, password)
+        self.logger.info("Requesting login page.")
+        with dminer.sinks.helpers.wait_for_page_load(selenium_driver):
+            selenium_driver.get(
+                "{onion_url}".format(
+                    onion_url=self.onion_url
+                )
+            )
 
-		# If we are getting urls from a file, grab them now, otherwise, empty list
-		# TODO: implement dynamic scraping
-		scrape_urls = self.get_urls_from_file(from_file) if from_file else list()
+        # This is a special codeblock custom to DM to check if still on login pg
+        while "login" in selenium_driver.title.lower():
+            with dminer.sinks.helpers.wait_for_page_load(selenium_driver):
+                selenium_driver.get(
+                    "{onion_url}".format(
+                        onion_url=self.onion_url
+                    )
+                )
+            captcha_text = dminer.sinks.helpers.solve_captcha(
+                selenium_driver,
+                self.dbc_client,
+                selenium_driver.find_element_by_xpath(
+                    "//img[@alt='Captcha']"
+                ),
+                preprocessor=self.process_captcha
+            )
+            if captcha_text:
+                self.logger.info(
+                    "Attempting captcha solution with text: {captcha_text}".format(
+                        captcha_text=captcha_text
+                    )
+                )
+                # Enter the captcha
+                selenium_driver.find_element_by_xpath(
+                    "//input[@title='Captcha, case sensitive']"
+                ).send_keys(captcha_text)
+                # Enter the username
+                input_element = selenium_driver.find_elements_by_xpath(
+                    "//input[@value='' or @value='%s' and @type='text']" % username
+                )[0]
+                input_element.send_keys(username)
+                # Enter the password
+                input_element = selenium_driver.find_elements_by_xpath(
+                    "//input[@value='' and @type='password']"
+                )[0]
+                input_element.send_keys(password)
+                with dminer.sinks.helpers.wait_for_page_load(selenium_driver):
+                    # Submit the form
+                    selenium_driver.find_element_by_xpath(
+                        "//input[@value='Login']"
+                    ).click()
+            else:
+                self.logger.warn(
+                    "Rerolling page to get new captcha."
+                )
 
-		for url in scrape_urls:
+        # Go to the root and wait for the page to load so we can force the
+        # session to stabilize
+        self.logger.info("Stabilizing session.")
+        with dminer.sinks.helpers.wait_for_page_load(selenium_driver):
+            selenium_driver.get(self.onion_url)
+        # Move into a headless session, since we bypassed DDOS/Login
+        self.convert_headless(selenium_driver)
 
-			# Parses the URL into a URL object, and parses the query into a dictionary of key:value
-			# For example: www.google.com/my/leet/page?param=lol&other_param=cats
-			# is parsed into:
-			# {
-			#	"param": ["lol"]
-			#	"other_param": ["cats"]
-			# }
-			parsed_url, parsed_query = helpers.parse_url(url)
+    def convert_headless(self, selenium_driver):
+        """
+        This method converts the session stored in the selenium driver into
+        the instance's request session. It does so by disgarding the old
+        session object for this instance and replacing it with a new requests
+        session with the selenium session transfered into it. This method
+        also closes the selenium driver once the session has been cloned.
+        """
+        # Create a requests session to populate with the new session created
+        # in selenium.
+        self.requests_session = requests.Session()
+        self.requests_session.mount(
+            self.onion_url, requests.adapters.HTTPAdapter(max_retries=5)
+        )
+        self.requests_session.headers.update(
+            {
+                "Host": "lchudifyeqm4ldjj.onion",
+                "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:53.0) Gecko/20100101 Firefox/53.0",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.5",
+                "Accept-Encoding": "gzip, deflate",
+                "Upgrade-Insecure-Requests": "1",
+                "Cache-Control": "max-age=0"
+            }
+        )
 
-			# Iterating through a list of categories so that we can find the category that the
-			# URL contains. If there is no category, then... _shrug_
-			category_found = None
-			for category in self.categories.keys():
-				if category in parsed_query:
-					category_found = category
-					break
+        # Clone the session headers from selenium into requests
+        self.logger.info(
+            "Cloning selenium session into python-requests session."
+        )
+        dminer.sinks.helpers.clone_selenium_session_to_requests(
+            selenium_driver, self.requests_session
+        )
+        # Close the selenium instance, as it is no longer needed.
+        self.logger.info("Closing selenium driver.")
+        selenium_driver.close()
 
+    def save_out(self, url, response):
+        """
+        This method saves a response to the instance specified directory,
+        with a filename based on the time of saving and the category of the
+        response.
+        """
+        current_time = datetime.now().strftime('%m_%d_%y_%H_%M_%S')
+        file_name = "dreammarket_{category}_{timestamp}.html".format(
+            category=self.category,
+            timestamp=current_time
+        )
+        self.logger.info(
+            "Saving {url} page to {disk_path}".format(
+                url=url,
+                disk_path=os.path.join(self.save_to_directory, file_name)
+            )
+        )
+        dminer.sinks.helpers.save_file(
+            self.save_to_directory,
+            file_name, response
+        )
 
-			# Use the category to build the filename to save on disk
-			if category_found:
-				timenow = datetime.now().strftime('%m%d%H%M%S')
-				timenow_year = datetime.now().strftime('%y')
-				timenow_month = datetime.now().strftime('%m')
-				timenow_day = datetime.now().strftime('%d')
-				timenow_second = datetime.now().strftime('%d')
-				file_name = "dreammarket_" + category_found + '_' + timenow_month + '_' + timenow_day + '_' + timenow_year + '_' + timenow_second + ".html"
-			else:
-				# TODO: Fix the broham error
-				raise Exception("Yo, not found broham")
+    def perform_request(self, url):
+        """
+        This method performs a request and returns the request object. It
+        has various checks based on the instance settings, such as verifying
+        that the user is signed in, performing login when the user becomes
+        deauthenticated, and handling request timeout/interval/redirections.
+        """
+        response_success = False
+        retry_attempts = self.retry_attempts
+        # Pull down the page source into `response.text`
+        self.logger.info("Requesting: %s" % url)
+        while retry_attempts > 0:
+            # Sleep for a random amount in between attempts, to prevent looking
+            # like a bot.
+            sleep_time = random.randrange(0, self.request_interval)
+            self.logger.info("Sleeping thread for %is" % sleep_time)
+            time.sleep(sleep_time)
+            # Perform the request, without following redirects. If we are
+            # redirected, then we need to make sure we handle it correctly,
+            # as it could be to a login/ddos page, or to the home page.
+            try:
+                response = self.requests_session.get(
+                    url,
+                    allow_redirects=False,
+                    timeout=self.request_timeout
+                )
+            except requests.exceptions.ConnectionError:
+                self.logger.error("Request timeout, retrying.")
+                continue
 
-			# Grab the page source for the given url
-			try:
-				file_contents = self.selenium_driver.page_source.encode('unicode_escape','ignore')
-			except:
-				file_contents = self.selenium_driver.page_source.decode('unicode_escape','ignore')
+            # If the response status is 200, then we are fine to exit early
+            if response.status_code == 200:
+                return response, True
+            # If the response status is 302, then we were being redirected.
+            elif response.status_code == 302:
+                # If we were being redirected to the login page, we will
+                # reauthenticate.
+                if "login" in response.headers["Location"].lower():
+                    self.perform_login(
+                        self.dreammarket_username, self.dreammarket_password
+                    )
+                # We fail hard if we don't know where we are being redirected
+                # to, since this is not an expected condition.
+                else:
+                    raise Exception(
+                        "Redirection from {original_url} to {redirect_url}".format(
+                            original_url=url,
+                            redirect_url=response.headers["Location"]
+                        )
+                    )
+        return response, False
 
-		if save_directory:
-			self.save_to_directory(save_directory, file_name, file_contents)
-		else:
-			raise Exception("Oh shit waddup")
+    def scrape(self, daemon=False):
+        """
+        This method performs the actual scraping of the Dream Market site, which
+        includes the fetching of URLS to be processed, requests made to the
+        site, as well as saving the scrapes to a directory for later ingestion,
+        or yielding them to the ingestion point.
+
+        Note: This function is a generator, and must be itereated to invoke
+        processing.
+        """
+        # Get past DDOS protection and log in.
+        self.logger.info("Attempting to log in.")
+        # Get an Alphabay session through selenium due to the captcha
+        self.perform_login(
+            self.dreammarket_username,
+            self.dreammarket_password
+        )
+
+        while True:
+            # If we are getting urls from a file, grab them now, otherwise,
+            # empty list
+            self.logger.info("Fetching urls.")
+            scrape_urls = \
+                dminer.sinks.helpers.get_urls_from_file(self.url_file) \
+                if self.url_file \
+                else self.get_dynamic_urls()
+            self.logger.info("Fetched %s urls." % str(len(scrape_urls)))
+
+            for url in scrape_urls:
+                response, response_success = self.perform_request(url)
+                if response_success:
+                    # Save the file to disk, if the flag is set to do so
+                    if self.save_to_directory:
+                        # Save the file out
+                        self.save_out(url, response.text.encode("UTF-8"))
+                    yield response.text.encode("UTF-8")
+            if not daemon:
+                break
