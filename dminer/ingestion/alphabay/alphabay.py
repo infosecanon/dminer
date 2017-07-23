@@ -130,7 +130,7 @@ class AlphabayParser(BaseParser):
         if directory:
             file_pattern = os.environ.get(
                 "DMINER_ALPHABAY_PARSER_FILENAME_FORMAT",
-                ".*(?P<market_name>alphabay)_(?P<market_category>[a-zA-Z 0-9]*)_(?P<month>([0-9]{1,2}))_(?P<day>([0-9]{1,2}))_(?P<year>([0-9]{1,4}))_(?P<page>[0-9]{1,2}).html"
+                ".*(?P<market_name>alphabay)_(?P<market_category>([a-zA-Z 0-9]|_)*)_(?P<month>([0-9]{1,2}))_(?P<day>([0-9]{1,2}))_(?P<year>([0-9]{1,4}))_(?P<page>[0-9]{1,2}).html"
             ) if not directory_filename_pattern else directory_filename_pattern
 
             files = dminer.ingestion.helpers.get_files(directory)
