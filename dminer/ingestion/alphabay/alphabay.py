@@ -44,7 +44,7 @@ class AlphabayParser(BaseParser):
         """
         if isinstance(self.datastore, type(None)):
             raise DataStoreNotSpecifiedError("A datastore must be present in order to store a parsed result.")
-        
+
         if self.datastore_name == "elasticsearchinterface":
             self.store_elasticsearch(item)
 
@@ -98,7 +98,7 @@ class AlphabayParser(BaseParser):
                 vendor_id = vendor_id.strip().split("(")[1].rstrip(")")
             item["vendor_name"] = vendor_name
             item["vendor_id"] = int(vendor_id)
-            
+
 
             # Grab views, bids, and quantities
             meta_info = list(parent for parent in primary_div.find_all("span", class_="std") if "Bid" in parent.text)[0].text
@@ -117,7 +117,7 @@ class AlphabayParser(BaseParser):
     def parse(self, directory=None, directory_filename_pattern=None,
                     scrape_results=None, **kwargs):
         """
-        When ingesting from a directory if a `directory_filename_pattern` is not 
+        When ingesting from a directory if a `directory_filename_pattern` is not
         specified, the fetched files can be controlled through the use of the
         environment variable:
 
@@ -130,9 +130,9 @@ class AlphabayParser(BaseParser):
         if directory:
             file_pattern = os.environ.get(
                 "DMINER_ALPHABAY_PARSER_FILENAME_FORMAT",
-                ".*(?P<market_name>alphabay)_(?P<market_category>[a-zA-Z]*)_(?P<month>([0-9]{1,2}))_(?P<day>([0-9]{1,2}))_(?P<year>([0-9]{1,4}))_(?P<page>[0-9]{1,2}).html"
+                ".*(?P<market_name>alphabay)_(?P<market_category>[a-zA-Z 0-9]*)_(?P<month>([0-9]{1,2}))_(?P<day>([0-9]{1,2}))_(?P<year>([0-9]{1,4}))_(?P<page>[0-9]{1,2}).html"
             ) if not directory_filename_pattern else directory_filename_pattern
-            
+
             files = dminer.ingestion.helpers.get_files(directory)
             for filename in list(f for f in files if re.match(file_pattern, f)):
                 match = re.match(file_pattern, filename)
