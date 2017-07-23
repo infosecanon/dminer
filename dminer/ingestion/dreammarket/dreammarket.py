@@ -112,7 +112,7 @@ class DreammarketParser(object):
         if directory:
             file_pattern = os.environ.get(
                 "DMINER_DREAMMARKET_PARSER_FILENAME_FORMAT",
-                ".*(?P<market_name>dreammarket)_(?P<market_category>[a-zA-Z]*)_(?P<month>([0-9]{1,2}))_(?P<day>([0-9]{1,2}))_(?P<year>([0-9]{1,4}))_(?P<page>[0-9]{1,2}).html"
+                ".*(?P<market_name>dreammarket)_(?P<market_category>[a-zA-Z 0-9]*)_(?P<month>([0-9]{1,2}))_(?P<day>([0-9]{1,2}))_(?P<year>([0-9]{1,4}))_(?P<page>[0-9]{1,2}).html"
             )
             files = dminer.ingestion.helpers.get_files(directory)
             for filename in list(f for f in files if re.match(file_pattern, f)):
