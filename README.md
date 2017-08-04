@@ -86,23 +86,27 @@ For module and pipeline design documentation, there are sections in the wiki ded
 ### Troubleshooting
 Problem: Geckodriver isn't installed:
 
-Reference: https://askubuntu.com/questions/870530/how-to-install-geckodriver-in-ubuntu
+Reference [1]( https://askubuntu.com/questions/870530/how-to-install-geckodriver-in-ubuntu)
 
 Fix:
+```sh
 $ wget https://github.com/mozilla/geckodriver/releases/download/v0.18.0/geckodriver-v0.18.0-linux64.tar.gz
 $ tar -xvzf geckodriver-v0.18.0-linux64.tar.gz
 $ chmod +x geckodriver
 $ sudo mv geckodriver /usr/local/bin
-
+```
 
 Problem:  Error: selenium.common.exceptions.WebDriverException: Message: Unable to find a matching set of capabilities
 
-Reference:
-https://github.com/SeleniumHQ/selenium/issues/3890
-https://github.com/mozilla/geckodriver/releases
+Reference [1](https://github.com/SeleniumHQ/selenium/issues/3890) [2](https://github.com/mozilla/geckodriver/releases)
 
 Fix:
-Please update to Selenium v3.4, geckodriver > v0.16.0 (see above), Firefox v54.0 ($ sudo apt-get update, $ sudo apt-get install firefox)
+Please update to Selenium v3.4, geckodriver > v0.16.0 (see above), Firefox v54.0
+
+```sh
+$ sudo apt-get update
+$ sudo apt-get install firefox
+```
 
 ## Maintainers
 
