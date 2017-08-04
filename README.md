@@ -3,7 +3,7 @@ DMiner
 
 ## Requirements
 ### Databases
-Because `dminer` has been designed to allow interfaces for any backend database, we highly encourage you to read the official documentation for your backend of choice. However, we explicitly support `elasticsearch`, as this is the easiest route to gaining a feature-full experience with `dminer`. Documentation on how to set up `elasticsearch` and it's supporting modules for use with `dminer` have therefore been added to the [wiki]().
+Because `dminer` has been designed to allow interfaces for any backend database, we highly encourage you to read the official documentation for your backend of choice. However, we explicitly support `elasticsearch`, as this is the easiest route to gaining a feature-full experience with `dminer`. Documentation on how to set up `elasticsearch` and its supporting modules for use with `dminer` will soon be added to a wiki.
 
 It is notable however, that a database is only required for ingestion purposes. Due to the design of the pipeline, it is possible to perform scrape-only operations and regressively ingest these scrapes at later times.
 
@@ -31,8 +31,8 @@ python setup.py develop
 ```
 It is suggested that you have a working install of `virtualenv` and `virtualenvwrapper` to prevent possible collisions with system dependencies. If you have `virtualenvwrapper` installed, you can run `mkvirtualenv dminer` before running the above installation commands in order to create the environment, and use the `workon dminer` and `deactivate` commands to interact with your virtual environment as needed. Further documentation on `virtualenv` and `virtualenvwrapper` can be found as follows:
 
-* [Virtualenv]()
-* [Virtualenvwrapper]()
+* [Virtualenv](https://pypi.python.org/pypi/virtualenv)
+* [Virtualenvwrapper](https://pypi.python.org/pypi/virtualenvwrapper)
 
 
 ### Production module
@@ -57,7 +57,7 @@ To provide documentation for `dminer`, we use the `pdoc` module to extract docum
 ```sh
 pdoc --http
 ```
-For further `pdoc` options, you can run `pdoc --help`, or view the [repository]() and [documentation]().
+For further `pdoc` options, you can run `pdoc --help`, or view the repository and documentation.
 
 ### Usage
 For the `dminer` CLI usage, you can perform:
@@ -69,21 +69,44 @@ and options will be displayed. You can also pass `--help` within argument subgro
 ```sh
 dminer scrape --help
 ```
+### Example
+For an example on how to use CLI to scrape:
+```sh
+dminer scrape <asset> -u <username> -p <password> -k <DBC username> -s <DBC password>
+```
+
 
 ### Module and Pipeline Design
 For module and pipeline design documentation, there are sections in the wiki dedicated to these topics. There is also a white-paper with sections discussing design choices and implementation on a top-level.
 
 * [Module Design]()
 * [Pipeline Design]()
-* [White-paper]()
+* [White-paper](https://github.com/infosecanon/dminer/blob/master/IEEE_CNS_Dminer.pdf)
 
+### Troubleshooting
+Problem: Geckodriver isn't installed:
+
+Reference: https://askubuntu.com/questions/870530/how-to-install-geckodriver-in-ubuntu
+
+Fix:
+$ wget https://github.com/mozilla/geckodriver/releases/download/v0.18.0/geckodriver-v0.18.0-linux64.tar.gz
+$ tar -xvzf geckodriver-v0.18.0-linux64.tar.gz
+$ chmod +x geckodriver
+$ sudo mv geckodriver /usr/local/bin
+
+
+Problem:  Error: selenium.common.exceptions.WebDriverException: Message: Unable to find a matching set of capabilities
+
+Reference:
+https://github.com/SeleniumHQ/selenium/issues/3890
+https://github.com/mozilla/geckodriver/releases
+
+Fix:
+Please update to Selenium v3.4, geckodriver > v0.16.0 (see above), Firefox v54.0 ($ sudo apt-get update, $ sudo apt-get install firefox)
 
 ## Maintainers
 
 ### Primaries
-* [Andrew]()
-* [Bobby]()
-* [Heather]()
-
-### Community
-* [Get Involved]()
+* [Andrew](https://github.com/m0nik3r)
+* [Bobby](https://github.com/btonic)
+* [Heather](https://github.com/infosecanon)
